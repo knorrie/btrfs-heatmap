@@ -3,6 +3,8 @@
 # Simple python program to print out all the extents of a single file
 # LGPLv2 license
 # Copyright Facebook 2014
+#
+# Playing around with this to learn
 
 import ctypes
 import fcntl
@@ -131,6 +133,20 @@ class btrfs_file_extent_item(ctypes.LittleEndianStructure):
                 ]
 
 
+class btrfs_chunk(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [("length", ctypes.c_ulonglong),
+                ("owner", ctypes.c_ulonglong),
+                ("stripe_len", ctypes.c_ulonglong),
+                ("type", ctypes.c_ulonglong),
+                ("io_align", ctypes.c_ulong),
+                ("io_width", ctypes.c_ulong),
+                ("sector_size", ctypes.c_ulong),
+                ("num_stripes", ctypes.c_ubyte * 2),
+                ("sub_stripes", ctypes.c_ubyte * 2),
+                ]
+
+
 class btrfs_ioctl_search():
     def __init__(self):
         self.args = btrfs_ioctl_search_args()
@@ -181,71 +197,40 @@ def advance_search(search):
     return True
 
 
-def print_one_extent(header, fi, extent_hash):
+def print_one_chunk(header, fi):
     """
-    given one search_header and one file_item, print the details.  This
-    also tosses the [disk_bytenr,disk_num_bytes] into extent_hash to record
-    which extents were used by this file
+    given one search_header and one chunk, print the details
     """
 
-    # we're ignoring inline items for now
-    if fi.type == BTRFS_FILE_EXTENT_INLINE:
-        # header.len is the length of the item returned.  We subtract
-        # the part of the file item header that is actually used (21 bytes)
-        # and we get the length of the inlined data.
-        # this may or may not be compressed
-        inline_len = header.len - 21
-        if fi.compression:
-            ram_bytes = fi.ram_bytes
-        else:
-            ram_bytes = inline_len
-        print("(%Lu %Lu): ram %Lu disk 0 disk_size %Lu -- inline" %
-              (header.objectid, header.offset, ram_bytes, inline_len))
-        extent_hash[-1] = inline_len
-        return
-
-    if fi.disk_bytenr == 0:
-        tag = " -- hole"
-    else:
-        tag = ""
-    print("(%Lu %Lu): ram %Lu disk %Lu disk_size %Lu%s" % (header.objectid,
-          header.offset, fi.num_bytes, fi.disk_bytenr, fi.disk_num_bytes, tag))
-
-    if fi.disk_bytenr:
-        extent_hash[fi.disk_bytenr] = fi.disk_num_bytes
+    print("(%Lu %Lu):" % (header.objectid, header.offset))
 
 
-def print_file_extents(filename):
+def print_chunk_tree(device):
     """
-    open 'filename' and run the search ioctl against it, printing all the
-    extents we find
+    open device and run the search ioctl against it, printing some info about
+    all the chunks we find
     """
-
-    extent_hash = {}
 
     s = btrfs_ioctl_search()
-    s.args.min_type = BTRFS_EXTENT_DATA_KEY
-    s.args.max_type = BTRFS_EXTENT_DATA_KEY
+    s.args.min_type = BTRFS_CHUNK_ITEM_KEY
+    s.args.max_type = BTRFS_CHUNK_ITEM_KEY
 
     try:
-        fd = os.open(filename, os.O_RDONLY)
+        fd = os.open(device, os.O_RDONLY)
         st = os.fstat(fd)
     except Exception, e:
-        sys.stderr.write("Failed to open %s (%s)\n" % (filename, e))
+        sys.stderr.write("Failed to open %s (%s)\n" % (device, e))
         return -1
 
-    if not stat.S_ISREG(st.st_mode):
-        sys.stderr.write("%s not a regular file\n" % filename)
+    if not stat.S_ISBLK(st.st_mode):
+        sys.stderr.write("%s not a block device\n" % device)
         return 0
-
-    s.args.min_objectid = st.st_ino
-    s.args.max_objectid = st.st_ino
 
     while True:
         try:
             s.search(fd)
         except Exception, e:
-            sys.stderr.write("Search ioctl failed for %s (%s)\n" % (filename, e))
+            sys.stderr.write("Search ioctl failed for %s (%s)\n" % (device, e))
             return -1
 
         if s.args.nr_items == 0:
@@ -270,16 +255,16 @@ def print_file_extents(filename):
             if p_left <= 0:
                 break
 
-            if header.type == BTRFS_EXTENT_DATA_KEY:
-                fi = btrfs_file_extent_item()
+            if header.type == BTRFS_CHUNK_ITEM_KEY:
+                chunk = btrfs_chunk()
 
                 # this would also be a kernel bug
-                if p_left < ctypes.sizeof(fi):
+                if p_left < ctypes.sizeof(chunk):
                     break
 
                 # Copy the file item out of the results buffer
-                ctypes.memmove(ctypes.addressof(fi), p, ctypes.sizeof(fi))
-                print_one_extent(header, fi, extent_hash)
+                ctypes.memmove(ctypes.addressof(chunk), p, ctypes.sizeof(chunk))
+                print_one_chunk(header, chunk)
 
             p += header.len
             p_left -= header.len
@@ -291,26 +276,11 @@ def print_file_extents(filename):
         if not advance_search(s):
             break
 
-    total_on_disk = 0
-    total_extents = 0
-    for x in extent_hash.itervalues():
-        total_on_disk += x
-        total_extents += 1
-
-    # don't divide by zero
-    if total_on_disk == 0:
-        total_on_disk = 1
-
-    print("file: %s extents %Lu disk size %Lu logical size %Lu ratio %.2f" %
-          (filename, total_extents, total_on_disk, st.st_size,
-           float(st.st_size) / float(total_on_disk)))
-
     return 0
 
 
 if len(sys.argv) == 1:
-    sys.stderr.write("Usage: btrfs-debug filename ...\n")
+    sys.stderr.write("Usage: btrfs-debug /dev/sth ...\n")
     sys.exit(1)
 
-for f in sys.argv[1:]:
-    print_file_extents(f)
+print_chunk_tree(sys.argv[1])
