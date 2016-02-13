@@ -212,8 +212,7 @@ def print_chunk_tree(device):
     """
 
     s = btrfs_ioctl_search()
-    s.args.min_type = BTRFS_CHUNK_ITEM_KEY
-    s.args.max_type = BTRFS_CHUNK_ITEM_KEY
+    s.args.tree_id = 3
 
     try:
         fd = os.open(device, os.O_RDONLY)
@@ -221,10 +220,6 @@ def print_chunk_tree(device):
     except Exception, e:
         sys.stderr.write("Failed to open %s (%s)\n" % (device, e))
         return -1
-
-    if not stat.S_ISBLK(st.st_mode):
-        sys.stderr.write("%s not a block device\n" % device)
-        return 0
 
     while True:
         try:
