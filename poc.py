@@ -2,6 +2,7 @@
 
 import btrfs
 import os
+import sys
 
 
 def devices(fd):
@@ -44,7 +45,7 @@ def block_group_used_for_chunk(fd, vaddr):
 
 
 def main():
-    fd = os.open("/mnt/heatmap", os.O_RDONLY)
+    fd = os.open(sys.argv[1], os.O_RDONLY)
     devices(fd)
     chunks(fd)
     os.close(fd)
