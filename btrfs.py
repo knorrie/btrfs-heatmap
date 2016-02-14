@@ -161,12 +161,12 @@ def search(fd, tree,
         buf = sized_array()
     ioctl_search_key.pack_into(
         buf, 0,
-        tree,  # Tree
-        min_objid, max_objid,        # ObjectID range
-        min_offset, max_offset,        # Offset range
-        min_transid, max_transid,    # TransID range
-        min_type, max_type,            # Key type range
-        number                        # Number of items
+        tree,
+        min_objid, max_objid,
+        min_offset, max_offset,
+        min_transid, max_transid,
+        min_type, max_type,
+        number
         )
 
     fcntl.ioctl(fd, IOC_TREE_SEARCH, buf)
