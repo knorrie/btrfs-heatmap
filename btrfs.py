@@ -175,7 +175,7 @@ def search(fd, tree,
     pos = ioctl_search_key.size
     ret = []
     while num_items > 0:
-        num_items =- 1
+        num_items -= 1
         header = ioctl_search_header.unpack_from(buf, pos)
         pos += ioctl_search_header.size
         raw_data = buf[pos:pos+header[4]]
