@@ -4,15 +4,10 @@ flags: 20, size: 268435456, used: 278528
 flags: 562949953421312, size: 16777216, used: 0
 dev item devid 1 total bytes 5368709120 bytes used 1384120320
 dev item devid 2 total bytes 5368709120 bytes used 301989888
-chunk type 1 stripe 0 devid 1 offset 12582912 length 8388608 vaddr 12582912
-block group used 450560
-chunk type 1 stripe 0 devid 1 offset 574619648 length 536870912 vaddr 297795584
-block group used 12587008
-chunk type 1 stripe 0 devid 1 offset 1111490560 length 536870912 vaddr 834666496
-block group used 80605184
-chunk type 20 stripe 0 devid 2 offset 1048576 length 268435456 vaddr 1371537408
-chunk type 20 stripe 1 devid 1 offset 1648361472 length 268435456 vaddr 1371537408
-block group used 278528
-chunk type 18 stripe 0 devid 2 offset 269484032 length 33554432 vaddr 1639972864
-chunk type 18 stripe 1 devid 1 offset 1916796928 length 33554432 vaddr 1639972864
-block group used 16384
+chunk type 1 stripe 0 devid 1 offset 12582912 length 8388608 used 450560
+chunk type 1 stripe 0 devid 1 offset 574619648 length 536870912 used 12587008
+chunk type 1 stripe 0 devid 1 offset 1111490560 length 536870912 used 80605184
+chunk type 20 stripe 0 devid 2 offset 1048576 length 268435456 used 278528
+chunk type 20 stripe 1 devid 1 offset 1648361472 length 268435456 used 278528
+chunk type 18 stripe 0 devid 2 offset 269484032 length 33554432 used 16384
+chunk type 18 stripe 1 devid 1 offset 1916796928 length 33554432 used 16384
