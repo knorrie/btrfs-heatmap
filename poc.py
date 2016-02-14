@@ -26,14 +26,31 @@ def devices(fd):
                            objid=btrfs.DEV_ITEMS_OBJECTID,
                            key_type=btrfs.DEV_ITEM_KEY,
                            structure=btrfs.dev_item)
-    for header, raw_data, data in devices:
-        print("dev item devid %s total bytes %s bytes used %s" % (data[0], data[1], data[2]))
+    for header, buf, device in devices:
+        print("dev item devid %s total bytes %s bytes used %s" % (device[0], device[1], device[2]))
+
+
+def chunks(fd):
+    chunks = btrfs.search(fd,
+                          tree=btrfs.CHUNK_TREE_OBJECTID,
+                          objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
+                          key_type=btrfs.CHUNK_ITEM_KEY,
+                          structure=btrfs.chunk)
+    for header, buf, chunk in chunks:
+        num_stripes = chunk[7]
+        pos = btrfs.chunk.size
+        for i in xrange(num_stripes):
+            stripe = btrfs.stripe.unpack_from(buf, pos)
+            pos += btrfs.stripe.size
+            print("chunk type %s devid %s offset %s length %s" %
+                  (chunk[3], stripe[0], stripe[1], chunk[0]))
 
 
 def main():
     fd = os.open("/mnt/heatmap", os.O_RDONLY)
     df(fd)
     devices(fd)
+    chunks(fd)
     os.close(fd)
 
 
