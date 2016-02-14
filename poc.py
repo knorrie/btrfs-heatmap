@@ -20,9 +20,20 @@ def df(fd):
         print("flags: %s, size: %s, used: %s" % (flags, total, used))
 
 
+def devices(fd):
+    devices = btrfs.search(fd,
+                           tree=btrfs.CHUNK_TREE_OBJECTID,
+                           objid=btrfs.DEV_ITEMS_OBJECTID,
+                           key_type=btrfs.DEV_ITEM_KEY,
+                           structure=btrfs.dev_item)
+    for header, raw_data, data in devices:
+        print("dev item devid %s total bytes %s bytes used %s" % (data[0], data[1], data[2]))
+
+
 def main():
     fd = os.open("/mnt/heatmap", os.O_RDONLY)
     df(fd)
+    devices(fd)
     os.close(fd)
 
 
