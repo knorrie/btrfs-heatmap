@@ -137,8 +137,8 @@ def sized_array(count=4096):
 
 
 def search(fd, tree,
-           objid, key_type, offset=[0, MINUS_ONE],
-           transid=[0, MINUS_ONE], number=MINUS_ONE_L,
+           objid, key_type, offset=(0, MINUS_ONE),
+           transid=(0, MINUS_ONE), number=MINUS_ONE_L,
            structure=None, buf=None):
     try:
         min_objid, max_objid = objid
