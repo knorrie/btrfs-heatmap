@@ -182,8 +182,7 @@ def search(fd, tree,
         data = None
         if structure is not None:
             data = structure.unpack_from(buf, pos)
-
-    ret.append((header, raw_data, data))
-    pos += header[4]
+        ret.append((header, raw_data, data))
+        pos += header[4]
 
     return ret
