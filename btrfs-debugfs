@@ -268,7 +268,7 @@ def print_chunk_tree(device):
 
             s.args.min_offset = header.offset
 
-        if not advance_search(s):
+        if True: # not advance_search(s):
             break
 
     return 0
