@@ -169,7 +169,7 @@ def search(fd, tree,
         number                        # Number of items
         )
 
-    rv = fcntl.ioctl(fd, IOC_TREE_SEARCH, buf)
+    fcntl.ioctl(fd, IOC_TREE_SEARCH, buf)
     results = ioctl_search_key.unpack_from(buf, 0)
     num_items = results[9]
     pos = ioctl_search_key.size
