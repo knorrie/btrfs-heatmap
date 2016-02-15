@@ -47,8 +47,8 @@ def block_group_used_for_chunk(fd, vaddr):
                                 objid=vaddr,
                                 key_type=btrfs.BLOCK_GROUP_ITEM_KEY,
                                 structure=btrfs.block_group_item)
-    if len(block_groups) > 1:
-        raise Exception("Apparently I have no idea what I'm doing!")
+    if len(block_groups) == 0:
+        return 0
     return block_groups[0][2][0]
 
 
