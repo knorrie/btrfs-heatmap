@@ -35,8 +35,8 @@ def chunks(fd):
             for i in xrange(num_stripes):
                 stripe = btrfs.stripe.unpack_from(buf, pos)
                 pos += btrfs.stripe.size
-                print("chunk vaddr %s type %s stripe %s devid %s offset %s length %s used %s" %
-                      (vaddr, chunk[3], i, stripe[0], stripe[1], length, used))
+                print("chunk type %s stripe %s devid %s offset %s length %s used %s" %
+                      (chunk[3], i, stripe[0], stripe[1], length, used))
 
         if len(chunks) == 0:
             break
