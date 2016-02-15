@@ -18,7 +18,7 @@ def devices(fd):
 def chunks(fd):
     offset = (0, btrfs.MINUS_ONE)
     while True:
-        print("; searching chunks, offset %s" % offset[0])
+        #print("; searching chunks, offset %s" % offset[0])
         chunks = btrfs.search(fd,
                               tree=btrfs.CHUNK_TREE_OBJECTID,
                               objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
@@ -44,7 +44,7 @@ def chunks(fd):
 
 
 def block_group_used_for_chunk(fd, vaddr, length):
-    print("; searching extent tree for block group (%s BLOCK_GROUP_ITEM %s)" % (vaddr, length))
+    #print("; searching extent tree for block group (%s BLOCK_GROUP_ITEM %s)" % (vaddr, length))
     block_groups = btrfs.search(fd,
                                 tree=btrfs.EXTENT_TREE_OBJECTID,
                                 objid=vaddr,
