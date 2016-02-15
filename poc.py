@@ -32,11 +32,12 @@ def chunks(fd):
             length = chunk[0]
             offset = (vaddr + 1, btrfs.MINUS_ONE)
             used = block_group_used_for_chunk(fd, vaddr, length)
+            used_pct = (used * 100) / length
             for i in xrange(num_stripes):
                 stripe = btrfs.stripe.unpack_from(buf, pos)
                 pos += btrfs.stripe.size
-                print("chunk type %s stripe %s devid %s offset %s length %s used %s" %
-                      (chunk[3], i, stripe[0], stripe[1], length, used))
+                print("chunk type %s stripe %s devid %s offset %s length %s used %s%%" %
+                      (chunk[3], i, stripe[0], stripe[1], length, used_pct))
 
         if len(chunks) == 0:
             break
