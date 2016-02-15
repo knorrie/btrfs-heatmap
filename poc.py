@@ -29,24 +29,26 @@ def chunks(fd):
             num_stripes = chunk[7]
             pos = btrfs.chunk.size
             vaddr = header[2]
+            length = chunk[0]
             offset = (vaddr + 1, btrfs.MINUS_ONE)
-            used = block_group_used_for_chunk(fd, vaddr)
+            used = block_group_used_for_chunk(fd, vaddr, length)
             for i in xrange(num_stripes):
                 stripe = btrfs.stripe.unpack_from(buf, pos)
                 pos += btrfs.stripe.size
                 print("chunk vaddr %s type %s stripe %s devid %s offset %s length %s used %s" %
-                      (vaddr, chunk[3], i, stripe[0], stripe[1], chunk[0], used))
+                      (vaddr, chunk[3], i, stripe[0], stripe[1], length, used))
 
         if len(chunks) == 0:
             break
 
 
-def block_group_used_for_chunk(fd, vaddr):
-    print("; searching extent tree for block group %s" % vaddr)
+def block_group_used_for_chunk(fd, vaddr, length):
+    print("; searching extent tree for block group (%s BLOCK_GROUP_ITEM %s)" % (vaddr, length))
     block_groups = btrfs.search(fd,
                                 tree=btrfs.EXTENT_TREE_OBJECTID,
                                 objid=vaddr,
                                 key_type=btrfs.BLOCK_GROUP_ITEM_KEY,
+                                offset=length,
                                 structure=btrfs.block_group_item)
     if len(block_groups) == 0:
         return 0
