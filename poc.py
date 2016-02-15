@@ -18,13 +18,13 @@ def devices(fd):
 def chunks(fd):
     offset = (0, btrfs.MINUS_ONE)
     while True:
+        print("; searching chunks, offset %s" % offset[0])
         chunks = btrfs.search(fd,
                               tree=btrfs.CHUNK_TREE_OBJECTID,
                               objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
                               key_type=btrfs.CHUNK_ITEM_KEY,
                               offset=offset,
-                              structure=btrfs.chunk,
-                              buf=btrfs.sized_array(16384))
+                              structure=btrfs.chunk)
         for header, buf, chunk in chunks:
             num_stripes = chunk[7]
             pos = btrfs.chunk.size
@@ -34,8 +34,8 @@ def chunks(fd):
             for i in xrange(num_stripes):
                 stripe = btrfs.stripe.unpack_from(buf, pos)
                 pos += btrfs.stripe.size
-                print("chunk type %s stripe %s devid %s offset %s length %s used %s" %
-                      (chunk[3], i, stripe[0], stripe[1], chunk[0], used))
+                print("chunk vaddr %s type %s stripe %s devid %s offset %s length %s used %s" %
+                      (vaddr, chunk[3], i, stripe[0], stripe[1], chunk[0], used))
 
         if len(chunks) == 0:
             break
