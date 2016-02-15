@@ -23,7 +23,8 @@ def chunks(fd):
                               objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
                               key_type=btrfs.CHUNK_ITEM_KEY,
                               offset=offset,
-                              structure=btrfs.chunk)
+                              structure=btrfs.chunk,
+                              buf=btrfs.sized_array(16384))
         for header, buf, chunk in chunks:
             num_stripes = chunk[7]
             pos = btrfs.chunk.size
