@@ -16,21 +16,28 @@ def devices(fd):
 
 
 def chunks(fd):
-    chunks = btrfs.search(fd,
-                          tree=btrfs.CHUNK_TREE_OBJECTID,
-                          objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
-                          key_type=btrfs.CHUNK_ITEM_KEY,
-                          structure=btrfs.chunk)
-    for header, buf, chunk in chunks:
-        num_stripes = chunk[7]
-        pos = btrfs.chunk.size
-        vaddr = header[2]
-        used = block_group_used_for_chunk(fd, vaddr)
-        for i in xrange(num_stripes):
-            stripe = btrfs.stripe.unpack_from(buf, pos)
-            pos += btrfs.stripe.size
-            print("chunk type %s stripe %s devid %s offset %s length %s used %s" %
-                  (chunk[3], i, stripe[0], stripe[1], chunk[0], used))
+    offset = (0, btrfs.MINUS_ONE)
+    while True:
+        chunks = btrfs.search(fd,
+                              tree=btrfs.CHUNK_TREE_OBJECTID,
+                              objid=btrfs.FIRST_CHUNK_TREE_OBJECTID,
+                              key_type=btrfs.CHUNK_ITEM_KEY,
+                              offset=offset,
+                              structure=btrfs.chunk)
+        for header, buf, chunk in chunks:
+            num_stripes = chunk[7]
+            pos = btrfs.chunk.size
+            vaddr = header[2]
+            offset = (vaddr + 1, btrfs.MINUS_ONE)
+            used = block_group_used_for_chunk(fd, vaddr)
+            for i in xrange(num_stripes):
+                stripe = btrfs.stripe.unpack_from(buf, pos)
+                pos += btrfs.stripe.size
+                print("chunk type %s stripe %s devid %s offset %s length %s used %s" %
+                      (chunk[3], i, stripe[0], stripe[1], chunk[0], used))
+
+        if len(chunks) == 0:
+            break
 
 
 def block_group_used_for_chunk(fd, vaddr):
