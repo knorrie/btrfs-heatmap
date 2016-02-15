@@ -42,6 +42,7 @@ def chunks(fd):
 
 
 def block_group_used_for_chunk(fd, vaddr):
+    print("; searching extent tree for block group %s" % vaddr)
     block_groups = btrfs.search(fd,
                                 tree=btrfs.EXTENT_TREE_OBJECTID,
                                 objid=vaddr,
