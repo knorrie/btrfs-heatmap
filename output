@@ -1,9 +1,9 @@
 dev item devid 1 total bytes 5368709120 bytes used 1384120320
 dev item devid 2 total bytes 5368709120 bytes used 301989888
-chunk vaddr 12582912 type 1 stripe 0 devid 1 offset 12582912 length 8388608 used_pct 5
-chunk vaddr 297795584 type 1 stripe 0 devid 1 offset 574619648 length 536870912 used_pct 2
-chunk vaddr 834666496 type 1 stripe 0 devid 1 offset 1111490560 length 536870912 used_pct 15
-chunk vaddr 1371537408 type 20 stripe 0 devid 2 offset 1048576 length 268435456 used_pct 0
-chunk vaddr 1371537408 type 20 stripe 1 devid 1 offset 1648361472 length 268435456 used_pct 0
-chunk vaddr 1639972864 type 18 stripe 0 devid 2 offset 269484032 length 33554432 used_pct 0
-chunk vaddr 1639972864 type 18 stripe 1 devid 1 offset 1916796928 length 33554432 used_pct 0
+chunk vaddr 12582912 type 1 stripe 0 devid 1 offset 12582912 length 8388608 used 450560 used_pct 5
+chunk vaddr 297795584 type 1 stripe 0 devid 1 offset 574619648 length 536870912 used 12587008 used_pct 2
+chunk vaddr 834666496 type 1 stripe 0 devid 1 offset 1111490560 length 536870912 used 80605184 used_pct 15
+chunk vaddr 1371537408 type 20 stripe 0 devid 2 offset 1048576 length 268435456 used 278528 used_pct 0
+chunk vaddr 1371537408 type 20 stripe 1 devid 1 offset 1648361472 length 268435456 used 278528 used_pct 0
+chunk vaddr 1639972864 type 18 stripe 0 devid 2 offset 269484032 length 33554432 used 16384 used_pct 0
+chunk vaddr 1639972864 type 18 stripe 1 devid 1 offset 1916796928 length 33554432 used 16384 used_pct 0
