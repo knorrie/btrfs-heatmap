@@ -5,8 +5,9 @@ import png
 device_size = [0]
 chunks = []
 
-width = 1200
-height = 800
+order = 10
+width = 2 ** order
+height = 2 ** order
 num_pixels = width * height
 
 pixels = [[] for x in xrange(num_pixels)]
@@ -53,20 +54,67 @@ for chunk in chunks:
         pct_of_last_pixel = (last_byte % bytes_per_pixel) / bytes_per_pixel
         pixels[last_pixel].append((pct_of_last_pixel, used_pct))
 
-for i in xrange(len(pixels)):
+
+def left(pos):
+    pos[1] -= 1
+    return pos
+
+
+def right(pos):
+    pos[1] += 1
+    return pos
+
+
+def up(pos):
+    pos[0] -= 1
+    return pos
+
+
+def down(pos):
+    pos[0] += 1
+    return pos
+
+
+instructions = {
+    up: [right, up, up, right, up, down, left],
+    left: [down, left, left, down, left, right, up],
+    right: [up, right, right, up, right, left, down],
+    down: [left, down, down, left, down, up, right],
+}
+
+
+def hilbert(order, direction=up, pos=None):
+    if pos is None:
+        pos = [(2 ** order) - 1, 0]
+        yield pos
+    if order == 0:
+        return
+
+    steps = instructions[direction]
+    for pos in hilbert(order - 1, steps[0], pos):
+        yield pos
+    yield steps[1](pos)
+    for pos in hilbert(order - 1, steps[2], pos):
+        yield pos
+    yield steps[3](pos)
+    for pos in hilbert(order - 1, steps[4], pos):
+        yield pos
+    yield steps[5](pos)
+    for pos in hilbert(order - 1, steps[6], pos):
+        yield pos
+
+
+png_grid = [[0 for x in xrange(width)] for y in xrange(height)]
+i = 0
+for pos in hilbert(order):
     if isinstance(pixels[i], list):
-        if len(pixels[i]) == 0:
-            pixels[i] = 0
-        else:
+        if len(pixels[i]) > 0:
             gradient = 0
             for pct, used in pixels[i]:
                 gradient = gradient + (255 * pct * used)
-            pixels[i] = int(gradient)
+            png_grid[pos[0]][pos[1]] = int(gradient)
     else:
-        pixels[i] = int(255 * pixels[i])
-
-png_grid = []
-for i in range(0, len(pixels), width):
-    png_grid.append(pixels[i:i+width])
+        png_grid[pos[0]][pos[1]] = int(255 * pixels[i])
+    i = i + 1
 
 png.from_array(png_grid, 'L').save("heatmap.png")
