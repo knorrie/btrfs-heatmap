@@ -24,6 +24,9 @@ for line in lines:
             'used': int(fields[14]),
         })
     elif fields[0] == 'dev':
+        devid = int(fields[3])
+        while devid > len(device_size):
+            device_size.append(0)
         device_size.append(int(fields[6]))
 
 device_offset = []
