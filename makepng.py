@@ -2,6 +2,8 @@
 
 import png
 
+debug = False
+
 device_size = [0]
 chunks = []
 
@@ -43,6 +45,10 @@ for chunk in chunks:
 
     first_pixel = int(first_byte / bytes_per_pixel)
     last_pixel = int(last_byte / bytes_per_pixel)
+
+    if debug:
+        print("chunk %s first_byte %s last_byte %s first_pixel %s last_pixel %s" %
+              (chunk, first_byte, last_byte, first_pixel, last_pixel))
 
     if first_pixel == last_pixel:
         pct_of_pixel = chunk['length'] / bytes_per_pixel
@@ -110,14 +116,22 @@ def hilbert(order, direction=up, pos=None):
 png_grid = [[0 for x in xrange(width)] for y in xrange(height)]
 i = 0
 for pos in hilbert(order):
+    gradient = 0
     if isinstance(pixels[i], list):
+        if debug:
+            print pixels[i]
         if len(pixels[i]) > 0:
             gradient = 0
             for pct, used in pixels[i]:
                 gradient = gradient + (255 * pct * used)
-            png_grid[pos[0]][pos[1]] = int(gradient)
+            gradient = int(gradient)
     else:
-        png_grid[pos[0]][pos[1]] = int(255 * pixels[i])
+        gradient = int(255 * pixels[i])
+    if debug:
+        print i, gradient, pixels[i]
+    if gradient > 255:
+        raise Exception
+    png_grid[pos[0]][pos[1]] = int(gradient)
     i = i + 1
 
 png.from_array(png_grid, 'L').save("heatmap.png")
