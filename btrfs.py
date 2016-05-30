@@ -149,10 +149,15 @@ def sized_array(count=4096):
     return array.array("B", itertools.repeat(0, count))
 
 
-def search(fd, tree,
-           objid, key_type, offset=(0, MINUS_ONE),
-           transid=(0, MINUS_ONE), number=MINUS_ONE_L,
-           structure=None, buf=None):
+def search(fd,
+           tree,
+           objid=(0, ULLONG_MAX),
+           key_type=(0, ULONG_MAX),
+           offset=(0, ULLONG_MAX),
+           transid=(0, ULLONG_MAX),
+           number=ULONG_MAX,
+           structure=None,
+           buf=None):
     try:
         min_objid, max_objid = objid
     except TypeError:
