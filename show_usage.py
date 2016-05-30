@@ -16,7 +16,7 @@ def devices(fd):
 
 
 def chunks(fd):
-    offset = (0, btrfs.MINUS_ONE)
+    offset = (0, btrfs.ULLONG_MAX)
     while True:
         #print("; searching chunks, offset %s" % offset[0])
         chunks = btrfs.search(fd,
@@ -30,7 +30,7 @@ def chunks(fd):
             pos = btrfs.chunk.size
             vaddr = header[2]
             length = chunk[0]
-            offset = (vaddr + 1, btrfs.MINUS_ONE)
+            offset = (vaddr + 1, btrfs.ULLONG_MAX)
             used = block_group_used_for_chunk(fd, vaddr, length)
             used_pct = (used * 100) / length
             for i in xrange(num_stripes):
