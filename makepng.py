@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import fileinput
 import png
 
 debug = False
@@ -14,8 +15,7 @@ num_pixels = width * height
 
 pixels = [[] for x in xrange(num_pixels)]
 
-lines = open('output').read().splitlines()
-for line in lines:
+for line in fileinput.input():
     fields = line.split()
     if fields[0] == 'chunk':
         chunks.append({
