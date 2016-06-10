@@ -66,10 +66,12 @@ def list_extents(fd, min_vaddr, chunk_length):
             iref_type, iref_offset = btrfs.extent_inline_ref.unpack_from(buf, pos)
             if iref_type == btrfs.EXTENT_DATA_REF_KEY:
                 pos = pos + 1
-                dref_root, dref_objectid, dref_offset, dref_count = \
-                    btrfs.extent_data_ref.unpack_from(buf, pos)
-                print("\textent data backref root %s objectid %s offset %s count %s" %
-                      (dref_root, dref_objectid, dref_offset, dref_count))
+                while pos < len(buf):
+                    dref_root, dref_objectid, dref_offset, dref_count = \
+                        btrfs.extent_data_ref.unpack_from(buf, pos)
+                    print("\textent data backref root %s objectid %s offset %s count %s" %
+                          (dref_root, dref_objectid, dref_offset, dref_count))
+                    pos = pos + btrfs.extent_data_ref.size
 
     if next_vaddr < max_vaddr:
         print(format_string %
