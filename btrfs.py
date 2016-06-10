@@ -97,12 +97,13 @@ BLOCK_GROUP_RAID10 = 1 << 6
 ioctl_space_args = struct.Struct("=2Q")
 ioctl_space_info = struct.Struct("=3Q")
 ioctl_search_key = struct.Struct("=Q6QLLL4x32x")
-ioctl_search_header = struct.Struct("=3Q2L")
+ioctl_search_header = struct.Struct("=3Q2L")  # transid, objectid, offset, type, len
 PATH_NAME_MAX = 4087
 ioctl_vol_args = struct.Struct("=q4088s")
 ioctl_default_subvol = struct.Struct("=Q")
 
 # Internal data structures
+disk_key = struct.Struct("<QBQ")  # objectid, type, offset
 dev_item = struct.Struct("<3Q3L3QL2B16s16s")
 dev_extent = struct.Struct("<4Q16s")
 chunk = struct.Struct("<4Q3L2H")
@@ -143,6 +144,27 @@ def usage_type(bgid):
         return "sys"
     else:
         return ""
+
+
+EXTENT_FLAG_DATA = 1 << 0
+EXTENT_FLAG_TREE_BLOCK = 1 << 1
+BLOCK_FLAG_FULL_BACKREF = 1 << 1
+
+extent_item = struct.Struct("<3Q")  # refs, generation, flags
+extent_inline_ref = struct.Struct("<BQ")  # type, offset
+extent_data_ref = struct.Struct("<3QL")  # root, objectid, offset, count
+shared_data_ref = struct.Struct("<L")  # count
+
+
+def extent_flags_to_str(flags):
+    ret = []
+    if flags & EXTENT_FLAG_DATA:
+        ret.append("DATA")
+    if flags & EXTENT_FLAG_TREE_BLOCK:
+        ret.append("TREE_BLOCK")
+    if flags & BLOCK_FLAG_FULL_BACKREF:
+        ret.append("FULL_BACKREF")
+    return '|'.join(ret)
 
 
 def sized_array(count=4096):

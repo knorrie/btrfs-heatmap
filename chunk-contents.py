@@ -22,8 +22,8 @@ def get_chunk_length(fd, vaddr):
 
 def list_extents(fd, min_vaddr, chunk_length):
     max_vaddr = min_vaddr + chunk_length - 1
-    hexlen = str(len("%x" % max_vaddr))
-    format_string = ''.join(("0x%0", hexlen, "x 0x%0", hexlen, "x %9s %.2f%% %s"))
+    vaddrlen = str(len(str(max_vaddr)))
+    format_string = ''.join(("%", vaddrlen, "s %", vaddrlen, "s %9s %.2f%% %s"))
     next_vaddr = min_vaddr
     while True:
         if min_vaddr > max_vaddr:
@@ -37,7 +37,9 @@ def list_extents(fd, min_vaddr, chunk_length):
 
         for header, buf, _ in extents:
             _, extent_vaddr, extent_size, key_type, _ = header
-            if key_type == btrfs.BLOCK_GROUP_ITEM_KEY:
+            if key_type != btrfs.EXTENT_ITEM_KEY:
+                if key_type != btrfs.BLOCK_GROUP_ITEM_KEY:
+                    print("What's this thing? %s" % header)
                 continue
             min_vaddr = extent_vaddr + 1
             if extent_vaddr > next_vaddr:
@@ -51,7 +53,23 @@ def list_extents(fd, min_vaddr, chunk_length):
                   (extent_vaddr, extent_vaddr + extent_size - 1,
                    extent_size,
                    float(extent_size) / chunk_length * 100,
-                   "extent"))
+                   "extent item"))
+            pos = 0
+            refs, gen, flags = btrfs.extent_item.unpack_from(buf, pos)
+            pos = pos + btrfs.extent_item.size
+            print("\textent refs %s gen %s flags %s" %
+                  (refs, gen, btrfs.extent_flags_to_str(flags)))
+            if flags & btrfs.EXTENT_FLAG_TREE_BLOCK:
+                print("Bork, EXTENT_FLAG_TREE_BLOCK")
+                continue
+            # assume no metadata, skip tree_block logic, directly assume iref on pos
+            iref_type, iref_offset = btrfs.extent_inline_ref.unpack_from(buf, pos)
+            if iref_type == btrfs.EXTENT_DATA_REF_KEY:
+                pos = pos + 1
+                dref_root, dref_objectid, dref_offset, dref_count = \
+                    btrfs.extent_data_ref.unpack_from(buf, pos)
+                print("\textent data backref root %s objectid %s offset %s count %s" %
+                      (dref_root, dref_objectid, dref_offset, dref_count))
 
     if next_vaddr < max_vaddr:
         print(format_string %
@@ -59,6 +77,10 @@ def list_extents(fd, min_vaddr, chunk_length):
                max_vaddr + 1 - next_vaddr,
                float(max_vaddr + 1 - next_vaddr) / chunk_length * 100,
                ""))
+
+
+def find_filename(root, objectid, offset):
+    pass
 
 
 def main():
