@@ -48,7 +48,7 @@ def list_extents(fd, min_vaddr, chunk_length):
                       (next_vaddr, extent_vaddr - 1,
                        extent_vaddr - next_vaddr,
                        float(extent_vaddr - next_vaddr) / chunk_length * 100,
-                       ""))
+                       "free space"))
             next_vaddr = extent_vaddr + extent_size
             print(format_string %
                   (extent_vaddr, extent_vaddr + extent_size - 1,
