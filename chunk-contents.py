@@ -4,6 +4,7 @@ import btrfs
 import os
 import sys
 
+filenames_cache = {}
 
 def get_chunk_length(fd, vaddr):
     chunks = btrfs.search(fd,
@@ -69,8 +70,10 @@ def list_extents(fd, min_vaddr, chunk_length):
                 while pos < len(buf):
                     dref_root, dref_objectid, dref_offset, dref_count = \
                         btrfs.extent_data_ref.unpack_from(buf, pos)
-                    print("\textent data backref root %s objectid %s offset %s count %s" %
-                          (dref_root, dref_objectid, dref_offset, dref_count))
+                    filenames = filenames_cache.get((dref_root, dref_objectid),
+                                                    find_filenames(fd, dref_root, dref_objectid))
+                    print("\textent data backref root %s objectid %s names %s" %
+                          (dref_root, dref_objectid, filenames))
                     pos = pos + btrfs.extent_data_ref.size
 
     if next_vaddr < max_vaddr:
@@ -81,8 +84,29 @@ def list_extents(fd, min_vaddr, chunk_length):
                ""))
 
 
-def find_filename(root, objectid, offset):
-    pass
+def find_filenames(fd, root, inode):
+    inode_refs = btrfs.search(fd, tree=root, objid=inode,
+                              key_type=btrfs.INODE_REF_KEY,
+                              )
+    if len(inode_refs) > 1:
+        raise Exception("Not exactly 1 inode_ref found, but %s for root %s inode %s" %
+                        (len(inode_refs), root, inode))
+
+    if len(inode_refs) == 0:
+        filenames_cache[(root, inode)] = None
+        return None
+
+    names = []
+    _, buf, _ = inode_refs[0]
+    pos = 0
+    while pos < len(buf):
+        index, namelen = btrfs.inode_ref.unpack_from(buf, pos)
+        pos = pos + btrfs.inode_ref.size
+        name = buf[pos:pos+namelen].tostring()
+        names.append(name)
+        pos = pos + namelen
+    filenames_cache[(root, inode)] = names
+    return names
 
 
 def main():
