@@ -81,7 +81,7 @@ def list_extents(fd, min_vaddr, chunk_length):
               (next_vaddr, max_vaddr,
                max_vaddr + 1 - next_vaddr,
                float(max_vaddr + 1 - next_vaddr) / chunk_length * 100,
-               ""))
+               "free space"))
 
 
 def find_filenames(fd, root, inode):
