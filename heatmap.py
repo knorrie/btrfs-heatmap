@@ -1,10 +1,16 @@
 #!/usr/bin/python
 
-from __future__ import print_function
+from __future__ import division, print_function, absolute_import, unicode_literals
 import btrfs
 import hilbert
 import png
 import sys
+
+
+try:
+    xrange
+except NameError:
+    xrange = range
 
 debug = False
 
@@ -46,7 +52,7 @@ def main():
     walk = hilbert.curve(order)
     pos = next(walk)
     png_grid = [[0 for x in xrange(pos.width)] for y in xrange(pos.height)]
-    bytes_per_pixel = float(total_size) / pos.num_steps
+    bytes_per_pixel = total_size / pos.num_steps
     print("order {0} total_size {1} bytes per pixel {2} pixels {3}".format(
         order, total_size, bytes_per_pixel, pos.num_steps))
 
@@ -58,7 +64,7 @@ def main():
             block_group = fs.block_group(dev_extent.vaddr)
             if block_group.flags & btrfs.BLOCK_GROUP_PROFILE_MASK != 0:
                 block_group_cache[dev_extent.vaddr] = fs.block_group(dev_extent.vaddr)
-        used_pct = float(block_group.used) / float(block_group.length)
+        used_pct = block_group.used / block_group.length
 
         first_byte = dev_offset[dev_extent.devid] + dev_extent.paddr
         last_byte = first_byte + dev_extent.length

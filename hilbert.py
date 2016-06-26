@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import division, print_function, absolute_import, unicode_literals
 
 left = lambda pos: pos.left()
 right = lambda pos: pos.right()
@@ -72,4 +73,4 @@ if __name__ == '__main__':
     import sys
     order = int(sys.argv[1])
     for pos in curve(order):
-        print pos
+        print(pos)
