@@ -1,18 +1,16 @@
 #!/usr/bin/python
 
 from __future__ import division, print_function, absolute_import, unicode_literals
+import argparse
 import btrfs
 import hilbert
 import png
-import sys
 
 
 try:
     xrange
 except NameError:
     xrange = range
-
-debug = False
 
 
 def device_size_offsets(fs):
@@ -24,7 +22,7 @@ def device_size_offsets(fs):
     return bytes_seen, offsets
 
 
-def finish_pixel(png_grid, pos):
+def finish_pixel(png_grid, pos, debug):
     used_pct = png_grid[pos.y][pos.x]
     if isinstance(used_pct, int) and used_pct == 0:
         return
@@ -34,17 +32,39 @@ def finish_pixel(png_grid, pos):
         print("{0} value {1}".format(pos, brightness))
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--order",
+        type=int,
+        default=10,
+        help="Hilbert curve order (default: 10)",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        help="increase debug output verbosity",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="pngfile",
+        help="Output png file name",
+    )
+    parser.add_argument(
+        "mountpoint",
+        help="Btrfs filesystem mountpoint",
+    )
+    return parser.parse_args()
+
+
 def main():
-    nargs = len(sys.argv)
-    if nargs < 3 or nargs > 4:
-        sys.stderr.write("usage: {0} mountpoint pngfile [order]\n".format(sys.argv[0]))
-        sys.exit(1)
-    if nargs == 4:
-        order = int(sys.argv[3])
-    else:
-        order = 10
-    path = sys.argv[1]
-    pngfile = sys.argv[2]
+    args = parse_args()
+    order = args.order
+    debug = args.verbose > 0
+    path = args.mountpoint
+    pngfile = args.pngfile
 
     fs = btrfs.FileSystem(path)
     total_size, dev_offset = device_size_offsets(fs)
@@ -72,7 +92,7 @@ def main():
         last_pixel = int(last_byte / bytes_per_pixel)
 
         if pos.linear < first_pixel:
-            finish_pixel(png_grid, pos)
+            finish_pixel(png_grid, pos, debug)
             while pos.linear < first_pixel:
                 pos = next(walk)
 
@@ -96,15 +116,16 @@ def main():
                       first_pixel, int(round(pct_of_first_pixel * 100)),
                       last_pixel, int(round(pct_of_last_pixel * 100))))
             png_grid[pos.y][pos.x] += pct_of_first_pixel * used_pct
-            finish_pixel(png_grid, pos)
+            finish_pixel(png_grid, pos, debug)
             for _ in xrange(first_pixel + 1, last_pixel):
                 pos = next(walk)
                 png_grid[pos.y][pos.x] = used_pct
-                finish_pixel(png_grid, pos)
+                finish_pixel(png_grid, pos, debug)
             pos = next(walk)
             png_grid[pos.y][pos.x] += pct_of_last_pixel * used_pct
-    finish_pixel(png_grid, pos)
-    png.from_array(png_grid, 'L').save(pngfile)
+    finish_pixel(png_grid, pos, debug)
+    if pngfile is not None:
+        png.from_array(png_grid, 'L').save(pngfile)
 
 
 if __name__ == '__main__':
