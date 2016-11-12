@@ -3,7 +3,6 @@
 from __future__ import division, print_function, absolute_import, unicode_literals
 import argparse
 import btrfs
-import hilbert
 import png
 
 
@@ -34,6 +33,12 @@ def finish_pixel(png_grid, pos, verbose):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--curve",
+        choices=['hilbert'],
+        default='hilbert',
+        help="Space filling curve type (default: hilbert)",
+    )
     parser.add_argument(
         "--order",
         type=int,
@@ -69,7 +74,13 @@ def main():
     fs = btrfs.FileSystem(path)
     total_size, dev_offset = device_size_offsets(fs)
 
-    walk = hilbert.curve(order)
+    curve_type = args.curve
+    if curve_type == 'hilbert':
+        import hilbert
+        walk = hilbert.curve(order)
+    else:
+        raise Exception("Space filling curve type %s not implemented!" % curve_type)
+
     pos = next(walk)
     png_grid = [[0 for x in xrange(pos.width)] for y in xrange(pos.height)]
     bytes_per_pixel = total_size / pos.num_steps
