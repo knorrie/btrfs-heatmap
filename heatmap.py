@@ -89,7 +89,7 @@ def main():
         else:
             block_group = fs.block_group(dev_extent.vaddr)
             if block_group.flags & btrfs.BLOCK_GROUP_PROFILE_MASK != 0:
-                block_group_cache[dev_extent.vaddr] = fs.block_group(dev_extent.vaddr)
+                block_group_cache[dev_extent.vaddr] = block_group
         used_pct = block_group.used / block_group.length
 
         first_byte = dev_offset[dev_extent.devid] + dev_extent.paddr
