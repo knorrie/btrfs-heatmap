@@ -43,13 +43,12 @@ def parse_args():
     parser.add_argument(
         "--order",
         type=int,
-        default=10,
-        help="Hilbert curve order (default: 10)",
+        help="Hilbert curve order (default: automatically chosen)",
     )
     parser.add_argument(
         "--size",
         type=int,
-        help="Image size (default: same as order). Height/width is 2^size",
+        help="Image size (default: 10). Height/width is 2^size",
     )
     parser.add_argument(
         "-v",
@@ -72,22 +71,26 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    path = args.mountpoint
+    fs = btrfs.FileSystem(path)
+    total_size, dev_offset = device_size_offsets(fs)
+
     order = args.order
+    if order is None:
+        import math
+        order = min(10, int(math.ceil(math.log(math.sqrt(total_size/(32*1048576)), 2))))
 
     size = args.size
     if size is None:
-        size == order
+        size = 10
     elif size < order:
         print("Error: size (%s) needs to be at least as bit as order (%s)!" % (size, order),
               file=sys.stderr)
         sys.exit(1)
 
     verbose = args.verbose
-    path = args.mountpoint
     pngfile = args.pngfile
-
-    fs = btrfs.FileSystem(path)
-    total_size, dev_offset = device_size_offsets(fs)
 
     curve_type = args.curve
     if curve_type == 'hilbert':
