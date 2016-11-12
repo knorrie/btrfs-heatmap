@@ -4,6 +4,7 @@ from __future__ import division, print_function, absolute_import, unicode_litera
 import argparse
 import btrfs
 import png
+import sys
 
 
 try:
@@ -46,6 +47,11 @@ def parse_args():
         help="Hilbert curve order (default: 10)",
     )
     parser.add_argument(
+        "--size",
+        type=int,
+        help="Image size (default: same as order). Height/width is 2^size",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -67,6 +73,15 @@ def parse_args():
 def main():
     args = parse_args()
     order = args.order
+
+    size = args.size
+    if size is None:
+        size == order
+    elif size < order:
+        print("Error: size (%s) needs to be at least as bit as order (%s)!" % (size, order),
+              file=sys.stderr)
+        sys.exit(1)
+
     verbose = args.verbose
     path = args.mountpoint
     pngfile = args.pngfile
@@ -82,7 +97,9 @@ def main():
         raise Exception("Space filling curve type %s not implemented!" % curve_type)
 
     pos = next(walk)
-    png_grid = [[0 for x in xrange(pos.width)] for y in xrange(pos.height)]
+    width = pos.width
+    height = pos.height
+    png_grid = [[0 for x in xrange(width)] for y in xrange(height)]
     bytes_per_pixel = total_size / pos.num_steps
 
     if verbose > 0:
@@ -145,6 +162,11 @@ def main():
             pos = next(walk)
             png_grid[pos.y][pos.x] += pct_of_last_pixel * used_pct
     finish_pixel(png_grid, pos, verbose)
+    if size > order:
+        scale = 2 ** (size - order)
+        png_grid = [[png_grid[y//scale][x//scale]
+                     for x in xrange(width*scale)]
+                    for y in xrange(height*scale)]
     if pngfile is not None:
         png.from_array(png_grid, 'L').save(pngfile)
 
