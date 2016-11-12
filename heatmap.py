@@ -36,7 +36,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--curve",
-        choices=['hilbert'],
+        choices=['hilbert', 'linear'],
         default='hilbert',
         help="Space filling curve type (default: hilbert)",
     )
@@ -93,6 +93,9 @@ def main():
     if curve_type == 'hilbert':
         import hilbert
         walk = hilbert.curve(order)
+    elif curve_type == 'linear':
+        import linear
+        walk = linear.notsocurvy(order)
     else:
         raise Exception("Space filling curve type %s not implemented!" % curve_type)
 
