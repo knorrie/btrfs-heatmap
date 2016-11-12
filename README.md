@@ -29,14 +29,19 @@ Besides the code in here, there are two extra dependencies:
 
 ```
 -# ./heatmap.py --help
-usage: heatmap.py [-h] [--order ORDER] [-v] [-o PNGFILE] mountpoint
+usage: heatmap.py [-h] [--curve {hilbert,linear}] [--order ORDER]
+                  [--size SIZE] [-v] [-o PNGFILE]
+                  mountpoint
 
 positional arguments:
   mountpoint            Btrfs filesystem mountpoint
 
 optional arguments:
   -h, --help            show this help message and exit
-  --order ORDER         Hilbert curve order (default: 10)
+  --curve {hilbert,linear}
+                        Space filling curve type (default: hilbert)
+  --order ORDER         Hilbert curve order (default: automatically chosen)
+  --size SIZE           Image size (default: 10). Height/width is 2^size
   -v, --verbose         increase debug output verbosity
   -o PNGFILE, --output PNGFILE
                         Output png file name
