@@ -87,7 +87,10 @@ def main():
         if dev_extent.vaddr in block_group_cache:
             block_group = block_group_cache[dev_extent.vaddr]
         else:
-            block_group = fs.block_group(dev_extent.vaddr)
+            try:
+                block_group = fs.block_group(dev_extent.vaddr)
+            except IndexError:
+                continue
             if block_group.flags & btrfs.BLOCK_GROUP_PROFILE_MASK != 0:
                 block_group_cache[dev_extent.vaddr] = block_group
         used_pct = block_group.used / block_group.length
