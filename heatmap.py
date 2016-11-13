@@ -41,6 +41,11 @@ def parse_args():
         help="Image size (default: 10). Height/width is 2^size",
     )
     parser.add_argument(
+        "--blockgroup",
+        type=int,
+        help="Instead of a filesystem overview, show extents in a block group",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -178,17 +183,53 @@ def walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose):
         grid.fill(first_byte, dev_extent.length, used_pct)
 
 
+def walk_extents(fs, block_group, grid, verbose):
+    nodesize = fs.fs_info().nodesize
+    tree = btrfs.ctree.EXTENT_TREE_OBJECTID
+    min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
+    max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) + -1
+    for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
+        if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
+            length = header.offset
+        elif header.type == btrfs.ctree.METADATA_ITEM_KEY:
+            length = nodesize
+        else:
+            continue
+        first_byte = header.objectid - block_group.vaddr
+        if verbose >= 1:
+            print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
+                header.objectid, first_byte, btrfs.ctree.key_type_str(header.type), length))
+        grid.fill(first_byte, length, 1)
+
+
 def main():
     args = parse_args()
 
     path = args.mountpoint
     order = args.order
+    bg_vaddr = args.blockgroup
+    scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
 
     fs = btrfs.FileSystem(path)
-    total_bytes, dev_offset = device_size_offsets(fs)
-    if order is None:
-        import math
-        order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
+    fs_info = fs.fs_info()
+    print(fs_info)
+    if scope == 'filesystem':
+        total_bytes, dev_offset = device_size_offsets(fs)
+        if order is None:
+            import math
+            order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
+    elif scope == 'blockgroup':
+        try:
+            block_group = fs.block_group(bg_vaddr)
+        except IndexError:
+            print("Error: no block group at vaddr {0}!".format(bg_vaddr), file=sys.stderr)
+            sys.exit(1)
+        total_bytes = block_group.length
+        if order is None:
+            import math
+            order = int(math.ceil(math.log(math.sqrt(block_group.length/fs_info.sectorsize), 2)))
+    else:
+        raise Exception("Scope {0} not implemented!".format(scope))
 
     size = args.size
     if size is None:
@@ -214,9 +255,14 @@ def main():
     else:
         raise Exception("Space filling curve type {0} not implemented!".format(curve_type))
 
-    print("curve {0} order {1} size {2} pngfile {3}".format(curve_type, order, size, pngfile))
+    print("scope {0} curve {1} order {2} size {3} pngfile {4}".format(
+        scope, curve_type, order, size, pngfile))
     grid = Grid(curve, total_bytes, verbose)
-    walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose)
+    if scope == 'filesystem':
+        walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose)
+    elif scope == 'blockgroup':
+        print(block_group)
+        walk_extents(fs, block_group, grid, verbose)
 
     if pngfile is not None:
         if size > order:
