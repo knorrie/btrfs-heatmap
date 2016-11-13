@@ -5,17 +5,17 @@ The btrfs heatmap script creates a visualization of how a btrfs filesystem is us
 
 ## What does it look like?
 
-![100GiB filesystem](doc/example-100gb.png)
+![238GiB filesystem](doc/example-238gib.png)
 
-This picture shows the 100GiB filesystem that is mounted on /home in my computer at work. The black parts are unallocated disk space. Raw disk space that is allocated to be used for data or metadata gets brighter if the fill factor is higher.
+This picture shows the 238GiB filesystem in my computer at work. The black parts are unallocated disk space. Raw disk space that is allocated to be used for data or metadata gets brighter if the fill factor is higher.
 
 ```
-Label: none  uuid: 01281474-1bf7-49ef-a8fb-669dff045fd4
-    Total devices 1 FS bytes used 54.72GiB
-    devid    1 size 100.00GiB used 66.53GiB path /dev/mapper/foo-home
+Label: none  uuid: ed10a358-c846-4e76-a071-3821d423a99d
+    Total devices 1 FS bytes used 132.74GiB
+    devid    1 size 237.54GiB used 152.01GiB path /dev/mapper/sda2_crypt
 ```
 
-The filesystem has 66.53GiB of the 100GiB allocated, in which actually only 54.72GiB is used. The picture gives an idea about the distribution of that data inside the allocated space.
+The filesystem has 152.01GiB of the 237.54GiB allocated, in which actually only 132.74GiB is used. The picture gives an idea about the distribution of that data inside the allocated space.
 
 The ordering inside the picture is based on a [Hilbert Curve](https://en.wikipedia.org/wiki/File:Hilbert_curve.svg). The lowest physical address of the block devices is located in the bottom left corner. From there it walks up, to the right and down again.
 
