@@ -22,16 +22,6 @@ def device_size_offsets(fs):
     return bytes_seen, offsets
 
 
-def finish_pixel(png_grid, pos, verbose):
-    used_pct = png_grid[pos.y][pos.x]
-    if isinstance(used_pct, int) and used_pct == 0:
-        return
-    brightness = 16 + int(round(used_pct * (255 - 16)))
-    png_grid[pos.y][pos.x] = brightness
-    if verbose >= 2:
-        print("{0} value {1}".format(pos, brightness))
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -54,7 +44,7 @@ def parse_args():
         "-v",
         "--verbose",
         action="count",
-        help="increase debug output verbosity",
+        help="increase debug output verbosity (-v, -vv, -vvv, etc)",
     )
     parser.add_argument(
         "-o",
@@ -69,53 +59,103 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
+class Grid(object):
+    def __init__(self, curve, total_bytes, verbose):
+        self.verbose = verbose
+        self.curve = curve
+        self._dirty = False
+        self._next_pixel()
+        self.height = self.pos.height
+        self.width = self.pos.width
+        self.total_bytes = total_bytes
+        self.bytes_per_pixel = total_bytes / self.pos.num_steps
+        self._grid = [[0 for x in xrange(self.width)] for y in xrange(self.height)]
+        self._finished = False
 
-    path = args.mountpoint
-    fs = btrfs.FileSystem(path)
-    total_size, dev_offset = device_size_offsets(fs)
+        print("grid height {0} width {1} total_bytes {2} bytes_per_pixel {3} pixels {4}".format(
+            self.height, self.width, total_bytes, self.bytes_per_pixel, self.pos.num_steps))
 
-    order = args.order
-    if order is None:
-        import math
-        order = min(10, int(math.ceil(math.log(math.sqrt(total_size/(32*1048576)), 2))))
+    def grid(self, height=None, width=None):
+        if self._finished is False:
+            self._finish_pixel()
+            self._finished = True
+        if (height is not None and width is not None) \
+                and (height != self.height or width != self.width):
+            height = int(height)
+            width = int(width)
+            hscale = height / self.height
+            wscale = width / self.width
+            return [[self._grid[int(y//hscale)][int(x//wscale)]
+                     for x in xrange(width)]
+                    for y in xrange(height)]
+        return self._grid
 
-    size = args.size
-    if size is None:
-        size = 10
-    elif size < order:
-        print("Error: size (%s) needs to be at least as bit as order (%s)!" % (size, order),
-              file=sys.stderr)
-        sys.exit(1)
+    def _next_pixel(self):
+        if self._dirty is True:
+            self._finish_pixel()
+        self.pos = next(self.curve)
+        self._dirty = False
 
-    verbose = args.verbose if args.verbose is not None else 0
-    pngfile = args.pngfile
+    def _add_to_pixel(self, used_pct):
+        self._grid[self.pos.y][self.pos.x] += used_pct
+        self._dirty = True
 
-    curve_type = args.curve
-    if curve_type == 'hilbert':
-        import hilbert
-        walk = hilbert.curve(order)
-    elif curve_type == 'linear':
-        import linear
-        walk = linear.notsocurvy(order)
-    else:
-        raise Exception("Space filling curve type %s not implemented!" % curve_type)
+    def _brightness(self, used_pct):
+        return 16 + int(round(used_pct * (255 - 16)))
 
-    pos = next(walk)
-    width = pos.width
-    height = pos.height
-    png_grid = [[0 for x in xrange(width)] for y in xrange(height)]
-    bytes_per_pixel = total_size / pos.num_steps
+    def _set_pixel_brightness(self, brightness):
+        self._grid[self.pos.y][self.pos.x] = brightness
 
-    if verbose > 0:
-        print("order {0} total_size {1} bytes per pixel {2} pixels {3}".format(
-            order, total_size, bytes_per_pixel, pos.num_steps))
-        debug_str_in_pixel = "devid {0} pstart {1} pend {2} used_pct {3} " \
-                             "type {4} in_pixel {5} {6}%"
-        debug_str_multiple_pixel = "devid {0} pstart {1} pend {2} used_pct {3} " \
-                                   "type {4} first_pixel {5} {6}% last_pixel {7} {8}%"
+    def _finish_pixel(self):
+        if self._dirty is False:
+            return
+        used_pct = self._grid[self.pos.y][self.pos.x]
+        brightness = self._brightness(used_pct)
+        self._grid[self.pos.y][self.pos.x] = brightness
+        if self.verbose >= 3:
+            print("        pixel {0} brightness {1}".format(self.pos, brightness))
 
+    def fill(self, first_byte, length, used_pct):
+        if self._finished is True:
+            raise Exception("Cannot change grid any more after retrieving the result once!")
+        first_pixel = int(first_byte / self.bytes_per_pixel)
+        last_pixel = int((first_byte + length - 1) / self.bytes_per_pixel)
+
+        while self.pos.linear < first_pixel:
+            self._next_pixel()
+
+        if first_pixel == last_pixel:
+            pct_of_pixel = length / self.bytes_per_pixel
+            if self.verbose >= 2:
+                print("    in_pixel {0} {1:.2f}%".format(first_pixel, pct_of_pixel * 100))
+            self._add_to_pixel(pct_of_pixel * used_pct)
+        else:
+            pct_of_first_pixel = \
+                (self.bytes_per_pixel - (first_byte % self.bytes_per_pixel)) / self.bytes_per_pixel
+            pct_of_last_pixel = \
+                ((first_byte + length) % self.bytes_per_pixel) / self.bytes_per_pixel
+            if pct_of_last_pixel == 0:
+                pct_of_last_pixel = 1
+            if self.verbose >= 2:
+                print("    first_pixel {0} {1:.2f}% last_pixel {2} {3:.2f}%".format(
+                    first_pixel, pct_of_first_pixel * 100, last_pixel, pct_of_last_pixel * 100))
+            # add our part of the first pixel, may be shared with previous fill
+            self._add_to_pixel(pct_of_first_pixel * used_pct)
+            # all intermediate pixels are ours, set brightness directly
+            if self.pos.linear < last_pixel - 1:
+                brightness = self._brightness(used_pct)
+                if self.verbose >= 3:
+                    print("        pixel range linear {0} to {1} brightness {2}".format(
+                        self.pos.linear, last_pixel - 1, brightness))
+                while self.pos.linear < last_pixel - 1:
+                    self._next_pixel()
+                    self._set_pixel_brightness(brightness)
+            self._next_pixel()
+            # add our part of the last pixel, may be shared with next fill
+            self._add_to_pixel(pct_of_last_pixel * used_pct)
+
+
+def walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose):
     block_group_cache = {}
     for dev_extent in fs.dev_extents():
         if dev_extent.vaddr in block_group_cache:
@@ -128,52 +168,62 @@ def main():
             if block_group.flags & btrfs.BLOCK_GROUP_PROFILE_MASK != 0:
                 block_group_cache[dev_extent.vaddr] = block_group
         used_pct = block_group.used / block_group.length
-
+        if verbose >= 1:
+            print("dev_extent devid {0} paddr {1} length {2} pend {3} type {4} "
+                  "used_pct {5:.2f}".format(dev_extent.devid, dev_extent.paddr, dev_extent.length,
+                                            dev_extent.paddr + dev_extent.length - 1,
+                                            btrfs.utils.block_group_flags_str(block_group.flags),
+                                            used_pct * 100))
         first_byte = dev_offset[dev_extent.devid] + dev_extent.paddr
-        last_byte = first_byte + dev_extent.length
-        first_pixel = int(first_byte / bytes_per_pixel)
-        last_pixel = int(last_byte / bytes_per_pixel)
+        grid.fill(first_byte, dev_extent.length, used_pct)
 
-        if pos.linear < first_pixel:
-            finish_pixel(png_grid, pos, verbose)
-            while pos.linear < first_pixel:
-                pos = next(walk)
 
-        if first_pixel == last_pixel:
-            pct_of_pixel = dev_extent.length / bytes_per_pixel
-            if verbose >= 1:
-                print(debug_str_in_pixel.format(
-                    dev_extent.devid, dev_extent.paddr, dev_extent.paddr + dev_extent.length,
-                    int(round(used_pct * 100)),
-                    btrfs.utils.block_group_flags_str(block_group.flags),
-                    first_pixel, int(round(pct_of_pixel * 100))))
-            png_grid[pos.y][pos.x] += pct_of_pixel * used_pct
+def main():
+    args = parse_args()
+
+    path = args.mountpoint
+    order = args.order
+
+    fs = btrfs.FileSystem(path)
+    total_bytes, dev_offset = device_size_offsets(fs)
+    if order is None:
+        import math
+        order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
+
+    size = args.size
+    if size is None:
+        size = 10
+    elif size < order:
+        if args.order is None:
+            order = size
         else:
-            pct_of_first_pixel = \
-                (bytes_per_pixel - (first_byte % bytes_per_pixel)) / bytes_per_pixel
-            pct_of_last_pixel = (last_byte % bytes_per_pixel) / bytes_per_pixel
-            if verbose >= 1:
-                print(debug_str_multiple_pixel.format(
-                    dev_extent.devid, dev_extent.paddr, dev_extent.paddr + dev_extent.length,
-                    int(round(used_pct * 100)),
-                    btrfs.utils.block_group_flags_str(block_group.flags),
-                    first_pixel, int(round(pct_of_first_pixel * 100)),
-                    last_pixel, int(round(pct_of_last_pixel * 100))))
-            png_grid[pos.y][pos.x] += pct_of_first_pixel * used_pct
-            finish_pixel(png_grid, pos, verbose)
-            for _ in xrange(first_pixel + 1, last_pixel):
-                pos = next(walk)
-                png_grid[pos.y][pos.x] = used_pct
-                finish_pixel(png_grid, pos, verbose)
-            pos = next(walk)
-            png_grid[pos.y][pos.x] += pct_of_last_pixel * used_pct
-    finish_pixel(png_grid, pos, verbose)
-    if size > order:
-        scale = 2 ** (size - order)
-        png_grid = [[png_grid[y//scale][x//scale]
-                     for x in xrange(width*scale)]
-                    for y in xrange(height*scale)]
+            print("Error: size {0} needs to be at least as bit as order {1}".format(size, order),
+                  file=sys.stderr)
+            sys.exit(1)
+
+    verbose = args.verbose if args.verbose is not None else 0
+    pngfile = args.pngfile
+
+    curve_type = args.curve
+    if curve_type == 'hilbert':
+        import hilbert
+        curve = hilbert.curve(order)
+    elif curve_type == 'linear':
+        import linear
+        curve = linear.notsocurvy(order)
+    else:
+        raise Exception("Space filling curve type {0} not implemented!".format(curve_type))
+
+    print("curve {0} order {1} size {2} pngfile {3}".format(curve_type, order, size, pngfile))
+    grid = Grid(curve, total_bytes, verbose)
+    walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose)
+
     if pngfile is not None:
+        if size > order:
+            scale = 2 ** (size - order)
+            png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
+        else:
+            png_grid = grid.grid()
         png.from_array(png_grid, 'L').save(pngfile)
 
 
