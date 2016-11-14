@@ -89,7 +89,7 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
-    verbose = args.verbose
+    verbose = args.verbose if args.verbose is not None else 0
     pngfile = args.pngfile
 
     curve_type = args.curve
