@@ -55,7 +55,7 @@ def parse_args():
         "-o",
         "--output",
         dest="pngfile",
-        help="Output png file name",
+        help="Output png file name (default: automatically chosen)",
     )
     parser.add_argument(
         "mountpoint",
@@ -209,6 +209,7 @@ def main():
     order = args.order
     bg_vaddr = args.blockgroup
     scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
+    pngfile = args.pngfile
 
     fs = btrfs.FileSystem(path)
     fs_info = fs.fs_info()
@@ -218,6 +219,9 @@ def main():
         if order is None:
             import math
             order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
+        if pngfile is None:
+            import time
+            pngfile = "fsid_{0}_at_{1}.png".format(fs.fsid, int(time.time()))
     elif scope == 'blockgroup':
         try:
             block_group = fs.block_group(bg_vaddr)
@@ -228,6 +232,10 @@ def main():
         if order is None:
             import math
             order = int(math.ceil(math.log(math.sqrt(block_group.length/fs_info.sectorsize), 2)))
+        if pngfile is None:
+            import time
+            pngfile = "fsid_{0}_blockgroup_{1}_at_{2}.png".format(
+                fs.fsid, block_group.vaddr, int(time.time()))
     else:
         raise Exception("Scope {0} not implemented!".format(scope))
 
@@ -243,7 +251,6 @@ def main():
             sys.exit(1)
 
     verbose = args.verbose if args.verbose is not None else 0
-    pngfile = args.pngfile
 
     curve_type = args.curve
     if curve_type == 'hilbert':
@@ -264,13 +271,12 @@ def main():
         print(block_group)
         walk_extents(fs, block_group, grid, verbose)
 
-    if pngfile is not None:
-        if size > order:
-            scale = 2 ** (size - order)
-            png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
-        else:
-            png_grid = grid.grid()
-        png.from_array(png_grid, 'L').save(pngfile)
+    if size > order:
+        scale = 2 ** (size - order)
+        png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
+    else:
+        png_grid = grid.grid()
+    png.from_array(png_grid, 'L').save(pngfile)
 
 
 if __name__ == '__main__':
