@@ -4,6 +4,7 @@ from __future__ import division, print_function, absolute_import, unicode_litera
 import argparse
 import btrfs
 import png
+import os
 import sys
 
 
@@ -55,7 +56,7 @@ def parse_args():
         "-o",
         "--output",
         dest="pngfile",
-        help="Output png file name (default: automatically chosen)",
+        help="Output png file name or directory (default: filename automatically chosen)",
     )
     parser.add_argument(
         "mountpoint",
@@ -210,6 +211,11 @@ def main():
     bg_vaddr = args.blockgroup
     scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
     pngfile = args.pngfile
+    if pngfile is not None and os.path.isdir(pngfile):
+        pngdir = pngfile
+        pngfile = None
+    else:
+        pngdir = None
 
     fs = btrfs.FileSystem(path)
     fs_info = fs.fs_info()
@@ -238,6 +244,9 @@ def main():
                 fs.fsid, block_group.vaddr, int(time.time()))
     else:
         raise Exception("Scope {0} not implemented!".format(scope))
+
+    if pngdir is not None:
+        pngfile = os.path.join(pngdir, pngfile)
 
     size = args.size
     if size is None:
