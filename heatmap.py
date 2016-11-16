@@ -29,7 +29,7 @@ def parse_args():
         "--curve",
         choices=['hilbert', 'linear'],
         default='hilbert',
-        help="Space filling curve type (default: hilbert)",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--order",
