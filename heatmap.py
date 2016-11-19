@@ -57,7 +57,8 @@ def parse_args():
 
 
 class Grid(object):
-    def __init__(self, order, size, total_bytes, default_granularity, verbose):
+    def __init__(self, order, size, total_bytes, default_granularity, verbose,
+                 min_brightness=None):
         self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
         self.curve = hilbert.curve(self.order)
@@ -69,6 +70,12 @@ class Grid(object):
         self.bytes_per_pixel = total_bytes / self.pos.num_steps
         self._grid = [[0 for x in xrange(self.width)] for y in xrange(self.height)]
         self._finished = False
+        if min_brightness is None:
+            self._min_brightness = 16
+        else:
+            if min_brightness < 0 or min_brightness > 255:
+                raise ValueError("min_brightness has to be in the range of 0-255")
+            self._min_brightness = min_brightness
         print("grid order {} size {} height {} width {} total_bytes {} bytes_per_pixel {}".format(
             self.order, self.size, self.height, self.width,
             total_bytes, self.bytes_per_pixel, self.pos.num_steps))
@@ -84,7 +91,7 @@ class Grid(object):
         self._dirty = True
 
     def _brightness(self, used_pct):
-        return 16 + int(round(used_pct * (255 - 16)))
+        return self._min_brightness + int(round(used_pct * (255 - self._min_brightness)))
 
     def _set_pixel_brightness(self, brightness):
         self._grid[self.pos.y][self.pos.x] = brightness
@@ -157,7 +164,7 @@ class Grid(object):
 
 
 def walk_dev_extents(fs, devices=None, order=None, size=None,
-                     default_granularity=33554432, verbose=0):
+                     default_granularity=33554432, verbose=0, min_brightness=None):
     if devices is None:
         devices = list(fs.devices())
         dev_extents = fs.dev_extents()
@@ -175,7 +182,7 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
         device_grid_offset[device.devid] = total_bytes
         total_bytes += device.total_bytes
 
-    grid = Grid(order, size, total_bytes, default_granularity, verbose)
+    grid = Grid(order, size, total_bytes, default_granularity, verbose, min_brightness)
     block_group_cache = {}
     for dev_extent in dev_extents:
         if dev_extent.vaddr in block_group_cache:
