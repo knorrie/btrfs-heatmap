@@ -198,6 +198,15 @@ def walk_extents(fs, block_group, grid, verbose):
         grid.fill(first_byte, length, 1)
 
 
+def write_png(grid, size, pngfile):
+    if size > grid.order:
+        scale = 2 ** (size - grid.order)
+        png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
+    else:
+        png_grid = grid.grid()
+    png.from_array(png_grid, 'L').save(pngfile)
+
+
 def main():
     args = parse_args()
 
@@ -264,12 +273,7 @@ def main():
         print(block_group)
         walk_extents(fs, block_group, grid, verbose)
 
-    if size > order:
-        scale = 2 ** (size - order)
-        png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
-    else:
-        png_grid = grid.grid()
-    png.from_array(png_grid, 'L').save(pngfile)
+    write_png(grid, size, pngfile)
 
 
 if __name__ == '__main__':
