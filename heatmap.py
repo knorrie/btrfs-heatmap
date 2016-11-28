@@ -198,6 +198,21 @@ def walk_extents(fs, block_group, grid, verbose):
         grid.fill(first_byte, length, 1)
 
 
+def choose_order_size(order=None, size=None, total_bytes=None, default_granularity=None):
+    order_was_none = order is None
+    if order_was_none:
+        import math
+        order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/default_granularity), 2))))
+    if size is None:
+        size = 10
+    if size < order:
+        if order_was_none:
+            order = size
+        else:
+            raise Exception("size ({0}) cannot be smaller than order ({1})".format(size, order))
+    return order, size
+
+
 def generate_png_file_name(output, parts=None):
     if output is not None and os.path.isdir(output):
         output_dir = output
@@ -231,7 +246,6 @@ def main():
     args = parse_args()
 
     path = args.mountpoint
-    order = args.order
     bg_vaddr = args.blockgroup
     scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
 
@@ -240,9 +254,7 @@ def main():
     print(fs_info)
     if scope == 'filesystem':
         total_bytes, dev_offset = device_size_offsets(fs.devices())
-        if order is None:
-            import math
-            order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
+        default_granularity = 32*1048576
         filename_parts = ['fsid', fs.fsid]
     elif scope == 'blockgroup':
         try:
@@ -251,23 +263,16 @@ def main():
             print("Error: no block group at vaddr {0}!".format(bg_vaddr), file=sys.stderr)
             sys.exit(1)
         total_bytes = block_group.length
-        if order is None:
-            import math
-            order = int(math.ceil(math.log(math.sqrt(block_group.length/fs_info.sectorsize), 2)))
+        default_granularity = fs_info.sectorsize
         filename_parts = ['fsid', fs.fsid, 'blockgroup', block_group.vaddr]
     else:
         raise Exception("Scope {0} not implemented!".format(scope))
 
-    size = args.size
-    if size is None:
-        size = 10
-    elif size < order:
-        if args.order is None:
-            order = size
-        else:
-            print("Error: size {0} needs to be at least as bit as order {1}".format(size, order),
-                  file=sys.stderr)
-            sys.exit(1)
+    try:
+        order, size = choose_order_size(args.order, args.size, total_bytes, default_granularity)
+    except Exception as e:
+        print("Error: {0}".format(e), file=sys.stderr)
+        sys.exit(1)
 
     verbose = args.verbose if args.verbose is not None else 0
 
