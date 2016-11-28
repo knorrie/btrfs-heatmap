@@ -15,10 +15,10 @@ except NameError:
     xrange = range
 
 
-def device_size_offsets(fs):
+def device_size_offsets(devices):
     bytes_seen = 0
     offsets = {}
-    for device in fs.devices():
+    for device in devices:
         offsets[device.devid] = bytes_seen
         bytes_seen += device.total_bytes
     return bytes_seen, offsets
@@ -216,7 +216,7 @@ def main():
     fs_info = fs.fs_info()
     print(fs_info)
     if scope == 'filesystem':
-        total_bytes, dev_offset = device_size_offsets(fs)
+        total_bytes, dev_offset = device_size_offsets(fs.devices())
         if order is None:
             import math
             order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
