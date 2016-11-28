@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument(
         "-o",
         "--output",
-        dest="pngfile",
+        dest="output",
         help="Output png file name or directory (default: filename automatically chosen)",
     )
     parser.add_argument(
@@ -198,6 +198,26 @@ def walk_extents(fs, block_group, grid, verbose):
         grid.fill(first_byte, length, 1)
 
 
+def generate_png_file_name(output, parts=None):
+    if output is not None and os.path.isdir(output):
+        output_dir = output
+        output_file = None
+    else:
+        output_dir = None
+        output_file = output
+    if output_file is None:
+        if parts is None:
+            parts = []
+        else:
+            parts.append('at')
+        import time
+        parts.append(str(int(time.time())))
+        output_file = '_'.join([str(part) for part in parts]) + '.png'
+    if output_dir is None:
+        return output_file
+    return os.path.join(output_dir, output_file)
+
+
 def write_png(grid, size, pngfile):
     if size > grid.order:
         scale = 2 ** (size - grid.order)
@@ -214,12 +234,6 @@ def main():
     order = args.order
     bg_vaddr = args.blockgroup
     scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
-    pngfile = args.pngfile
-    if pngfile is not None and os.path.isdir(pngfile):
-        pngdir = pngfile
-        pngfile = None
-    else:
-        pngdir = None
 
     fs = btrfs.FileSystem(path)
     fs_info = fs.fs_info()
@@ -229,9 +243,7 @@ def main():
         if order is None:
             import math
             order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/(32*1048576)), 2))))
-        if pngfile is None:
-            import time
-            pngfile = "fsid_{0}_at_{1}.png".format(fs.fsid, int(time.time()))
+        filename_parts = ['fsid', fs.fsid]
     elif scope == 'blockgroup':
         try:
             block_group = fs.block_group(bg_vaddr)
@@ -242,15 +254,9 @@ def main():
         if order is None:
             import math
             order = int(math.ceil(math.log(math.sqrt(block_group.length/fs_info.sectorsize), 2)))
-        if pngfile is None:
-            import time
-            pngfile = "fsid_{0}_blockgroup_{1}_at_{2}.png".format(
-                fs.fsid, block_group.vaddr, int(time.time()))
+        filename_parts = ['fsid', fs.fsid, 'blockgroup', block_group.vaddr]
     else:
         raise Exception("Scope {0} not implemented!".format(scope))
-
-    if pngdir is not None:
-        pngfile = os.path.join(pngdir, pngfile)
 
     size = args.size
     if size is None:
@@ -264,6 +270,8 @@ def main():
             sys.exit(1)
 
     verbose = args.verbose if args.verbose is not None else 0
+
+    pngfile = generate_png_file_name(args.output, filename_parts)
 
     print("scope {0} order {1} size {2} pngfile {3}".format(scope, order, size, pngfile))
     grid = Grid(order, total_bytes, verbose)
