@@ -3,6 +3,7 @@
 from __future__ import division, print_function, absolute_import, unicode_literals
 import argparse
 import btrfs
+import hilbert
 import png
 import os
 import sys
@@ -25,12 +26,6 @@ def device_size_offsets(fs):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--curve",
-        choices=['hilbert', 'linear'],
-        default='hilbert',
-        help=argparse.SUPPRESS,
-    )
     parser.add_argument(
         "--order",
         type=int,
@@ -66,9 +61,9 @@ def parse_args():
 
 
 class Grid(object):
-    def __init__(self, curve, total_bytes, verbose):
+    def __init__(self, order, total_bytes, verbose):
         self.verbose = verbose
-        self.curve = curve
+        self.curve = hilbert.curve(order)
         self._dirty = False
         self._next_pixel()
         self.height = self.pos.height
@@ -261,19 +256,8 @@ def main():
 
     verbose = args.verbose if args.verbose is not None else 0
 
-    curve_type = args.curve
-    if curve_type == 'hilbert':
-        import hilbert
-        curve = hilbert.curve(order)
-    elif curve_type == 'linear':
-        import linear
-        curve = linear.notsocurvy(order)
-    else:
-        raise Exception("Space filling curve type {0} not implemented!".format(curve_type))
-
-    print("scope {0} curve {1} order {2} size {3} pngfile {4}".format(
-        scope, curve_type, order, size, pngfile))
-    grid = Grid(curve, total_bytes, verbose)
+    print("scope {0} order {1} size {2} pngfile {3}".format(scope, order, size, pngfile))
+    grid = Grid(order, total_bytes, verbose)
     if scope == 'filesystem':
         walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose)
     elif scope == 'blockgroup':
