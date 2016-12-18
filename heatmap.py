@@ -7,6 +7,7 @@ import hilbert
 import png
 import os
 import sys
+import types
 
 
 try:
@@ -15,13 +16,8 @@ except NameError:
     xrange = range
 
 
-def device_size_offsets(devices):
-    bytes_seen = 0
-    offsets = {}
-    for device in devices:
-        offsets[device.devid] = bytes_seen
-        bytes_seen += device.total_bytes
-    return bytes_seen, offsets
+class HeatmapError(Exception):
+    pass
 
 
 def parse_args():
@@ -61,9 +57,10 @@ def parse_args():
 
 
 class Grid(object):
-    def __init__(self, order, total_bytes, verbose):
+    def __init__(self, order, size, total_bytes, default_granularity, verbose):
+        self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
-        self.curve = hilbert.curve(order)
+        self.curve = hilbert.curve(self.order)
         self._dirty = False
         self._next_pixel()
         self.height = self.pos.height
@@ -72,24 +69,9 @@ class Grid(object):
         self.bytes_per_pixel = total_bytes / self.pos.num_steps
         self._grid = [[0 for x in xrange(self.width)] for y in xrange(self.height)]
         self._finished = False
-
-        print("grid height {0} width {1} total_bytes {2} bytes_per_pixel {3} pixels {4}".format(
-            self.height, self.width, total_bytes, self.bytes_per_pixel, self.pos.num_steps))
-
-    def grid(self, height=None, width=None):
-        if self._finished is False:
-            self._finish_pixel()
-            self._finished = True
-        if (height is not None and width is not None) \
-                and (height != self.height or width != self.width):
-            height = int(height)
-            width = int(width)
-            hscale = height / self.height
-            wscale = width / self.width
-            return [[self._grid[int(y//hscale)][int(x//wscale)]
-                     for x in xrange(width)]
-                    for y in xrange(height)]
-        return self._grid
+        print("grid order {} size {} height {} width {} total_bytes {} bytes_per_pixel {}".format(
+            self.order, self.size, self.height, self.width,
+            total_bytes, self.bytes_per_pixel, self.pos.num_steps))
 
     def _next_pixel(self):
         if self._dirty is True:
@@ -155,10 +137,47 @@ class Grid(object):
             # add our part of the last pixel, may be shared with next fill
             self._add_to_pixel(pct_of_last_pixel * used_pct)
 
+    def write_png(self, pngfile):
+        print("pngfile {}".format(pngfile))
+        if self._finished is False:
+            self._finish_pixel()
+            self._finished = True
+        if self.size > self.order:
+            scale = 2 ** (self.size - self.order)
+            height = int(self.height * scale)
+            width = int(self.width * scale)
+            hscale = height / self.height
+            wscale = width / self.width
+            image = png.from_array(([self._grid[int(y//hscale)][int(x//wscale)]
+                                    for x in xrange(width)]
+                                   for y in xrange(height)), 'L', info={'height': height})
+        else:
+            image = png.from_array(self._grid, 'L')
+        image.save(pngfile)
 
-def walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose):
+
+def walk_dev_extents(fs, devices=None, order=None, size=None,
+                     default_granularity=33554432, verbose=0):
+    if devices is None:
+        devices = list(fs.devices())
+        dev_extents = fs.dev_extents()
+    else:
+        if isinstance(devices, types.GeneratorType):
+            devices = list(devices)
+        dev_extents = (dev_extent
+                       for device in devices
+                       for dev_extent in fs.dev_extents(device.devid, device.devid))
+
+    print("scope device {}".format(' '.join([str(device.devid) for device in devices])))
+    total_bytes = 0
+    device_grid_offset = {}
+    for device in devices:
+        device_grid_offset[device.devid] = total_bytes
+        total_bytes += device.total_bytes
+
+    grid = Grid(order, size, total_bytes, default_granularity, verbose)
     block_group_cache = {}
-    for dev_extent in fs.dev_extents():
+    for dev_extent in dev_extents:
         if dev_extent.vaddr in block_group_cache:
             block_group = block_group_cache[dev_extent.vaddr]
         else:
@@ -175,27 +194,48 @@ def walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose):
                                             dev_extent.paddr + dev_extent.length - 1,
                                             btrfs.utils.block_group_flags_str(block_group.flags),
                                             used_pct * 100))
-        first_byte = dev_offset[dev_extent.devid] + dev_extent.paddr
+        first_byte = device_grid_offset[dev_extent.devid] + dev_extent.paddr
         grid.fill(first_byte, dev_extent.length, used_pct)
+    return grid
 
 
-def walk_extents(fs, block_group, grid, verbose):
-    nodesize = fs.fs_info().nodesize
+def walk_extents(fs, block_groups, order=None, size=None, default_granularity=None, verbose=0):
+    if isinstance(block_groups, types.GeneratorType):
+        block_groups = list(block_groups)
+    fs_info = fs.fs_info()
+    nodesize = fs_info.nodesize
+
+    if default_granularity is None:
+        default_granularity = fs_info.sectorsize
+
+    print("scope block_group {}".format(' '.join([str(b.vaddr) for b in block_groups])))
+    total_bytes = 0
+    block_group_grid_offset = {}
+    for block_group in block_groups:
+        block_group_grid_offset[block_group] = total_bytes
+        total_bytes += block_group.length
+
+    grid = Grid(order, size, total_bytes, default_granularity, verbose)
+
     tree = btrfs.ctree.EXTENT_TREE_OBJECTID
-    min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
-    max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) + -1
-    for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
-        if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
-            length = header.offset
-        elif header.type == btrfs.ctree.METADATA_ITEM_KEY:
-            length = nodesize
-        else:
-            continue
-        first_byte = header.objectid - block_group.vaddr
-        if verbose >= 1:
-            print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
-                header.objectid, first_byte, btrfs.ctree.key_type_str(header.type), length))
-        grid.fill(first_byte, length, 1)
+    for block_group in block_groups:
+        if verbose > 0:
+            print(block_group)
+        min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
+        max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) - 1
+        for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
+            if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
+                length = header.offset
+            elif header.type == btrfs.ctree.METADATA_ITEM_KEY:
+                length = nodesize
+            else:
+                continue
+            first_byte = block_group_grid_offset[block_group] + header.objectid - block_group.vaddr
+            if verbose >= 1:
+                print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
+                    header.objectid, first_byte, btrfs.ctree.key_type_str(header.type), length))
+            grid.fill(first_byte, length, 1)
+    return grid
 
 
 def choose_order_size(order=None, size=None, total_bytes=None, default_granularity=None):
@@ -209,11 +249,11 @@ def choose_order_size(order=None, size=None, total_bytes=None, default_granulari
         if order_was_none:
             order = size
         else:
-            raise Exception("size ({0}) cannot be smaller than order ({1})".format(size, order))
+            raise HeatmapError("size ({}) cannot be smaller than order ({})".format(size, order))
     return order, size
 
 
-def generate_png_file_name(output, parts=None):
+def generate_png_file_name(output=None, parts=None):
     if output is not None and os.path.isdir(output):
         output_dir = output
         output_file = None
@@ -233,61 +273,33 @@ def generate_png_file_name(output, parts=None):
     return os.path.join(output_dir, output_file)
 
 
-def write_png(grid, size, pngfile):
-    if size > grid.order:
-        scale = 2 ** (size - grid.order)
-        png_grid = grid.grid(int(grid.height*scale), int(grid.width*scale))
-    else:
-        png_grid = grid.grid()
-    png.from_array(png_grid, 'L').save(pngfile)
-
-
 def main():
     args = parse_args()
-
     path = args.mountpoint
-    bg_vaddr = args.blockgroup
-    scope = 'filesystem' if bg_vaddr is None else 'blockgroup'
+    verbose = args.verbose if args.verbose is not None else 0
 
     fs = btrfs.FileSystem(path)
     fs_info = fs.fs_info()
     print(fs_info)
-    if scope == 'filesystem':
-        total_bytes, dev_offset = device_size_offsets(fs.devices())
-        default_granularity = 32*1048576
+
+    bg_vaddr = args.blockgroup
+    if bg_vaddr is None:
+        grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose)
         filename_parts = ['fsid', fs.fsid]
-    elif scope == 'blockgroup':
+    else:
         try:
             block_group = fs.block_group(bg_vaddr)
         except IndexError:
-            print("Error: no block group at vaddr {0}!".format(bg_vaddr), file=sys.stderr)
-            sys.exit(1)
-        total_bytes = block_group.length
-        default_granularity = fs_info.sectorsize
+            raise HeatmapError("Error: no block group at vaddr {}!".format(bg_vaddr))
+        grid = walk_extents(fs, [block_group], order=args.order, size=args.size, verbose=verbose)
         filename_parts = ['fsid', fs.fsid, 'blockgroup', block_group.vaddr]
-    else:
-        raise Exception("Scope {0} not implemented!".format(scope))
 
-    try:
-        order, size = choose_order_size(args.order, args.size, total_bytes, default_granularity)
-    except Exception as e:
-        print("Error: {0}".format(e), file=sys.stderr)
-        sys.exit(1)
-
-    verbose = args.verbose if args.verbose is not None else 0
-
-    pngfile = generate_png_file_name(args.output, filename_parts)
-
-    print("scope {0} order {1} size {2} pngfile {3}".format(scope, order, size, pngfile))
-    grid = Grid(order, total_bytes, verbose)
-    if scope == 'filesystem':
-        walk_dev_extents(fs, total_bytes, dev_offset, grid, verbose)
-    elif scope == 'blockgroup':
-        print(block_group)
-        walk_extents(fs, block_group, grid, verbose)
-
-    write_png(grid, size, pngfile)
+    grid.write_png(generate_png_file_name(args.output, filename_parts))
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except HeatmapError as e:
+        print("Error: {0}".format(e), file=sys.stderr)
+        sys.exit(1)
