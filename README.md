@@ -48,11 +48,7 @@ For size 8, I get a picture with height and witdth of 256 pixels, which means th
 
 ## More usage instructions!
 
-Besides the code in here, there are two extra dependencies:
-
- * [python-btrfs](https://github.com/knorrie/python-btrfs) (>= v0.3), used to gather all usage information
- * [png.py from the pypng project](https://github.com/drj11/pypng/blob/master/code/png.py), used to write the png images
-
+The code in here has one dependency, which is the [python-btrfs](https://github.com/knorrie/python-btrfs) library (>= v0.3), used to gather all usage information.
 
 The program has a built in help function that shows the options it accepts:
 

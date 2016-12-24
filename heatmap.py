@@ -4,10 +4,11 @@ from __future__ import division, print_function, absolute_import, unicode_litera
 import argparse
 import btrfs
 import hilbert
-import png
 import os
+import struct
 import sys
 import types
+import zlib
 
 
 try:
@@ -155,12 +156,12 @@ class Grid(object):
             width = int(self.width * scale)
             hscale = height / self.height
             wscale = width / self.width
-            image = png.from_array(([self._grid[int(y//hscale)][int(x//wscale)]
-                                    for x in xrange(width)]
-                                   for y in xrange(height)), 'L', info={'height': height})
+            rows = ((self._grid[int(y//hscale)][int(x//wscale)]
+                     for x in xrange(width))
+                    for y in xrange(height))
+            _write_png(pngfile, width, height, rows)
         else:
-            image = png.from_array(self._grid, 'L')
-        image.save(pngfile)
+            _write_png(pngfile, self.width, self.height, self._grid)
 
 
 def walk_dev_extents(fs, devices=None, order=None, size=None,
@@ -278,6 +279,42 @@ def generate_png_file_name(output=None, parts=None):
     if output_dir is None:
         return output_file
     return os.path.join(output_dir, output_file)
+
+
+def _write_png(pngfile, width, height, rows):
+    struct_len = struct_crc = struct.Struct('!I')
+    out = open(pngfile, 'wb')
+    out.write(b'\x89PNG\r\n\x1a\n')
+    # IHDR
+    out.write(struct_len.pack(13))
+    ihdr = struct.Struct('!4s2I5B').pack(b'IHDR', width, height, 8, 0, 0, 0, 0)
+    out.write(ihdr)
+    out.write(struct_crc.pack(zlib.crc32(ihdr) & 0xffffffff))
+    # IDAT
+    length_pos = out.tell()
+    out.write(b'\x00\x00\x00\x00IDAT')
+    crc = zlib.crc32(b'IDAT')
+    datalen = 0
+    compress = zlib.compressobj()
+    for row in rows:
+        for uncompressed in (b'\x00', b''.join(row)):
+            compressed = compress.compress(uncompressed)
+            if len(compressed) > 0:
+                crc = zlib.crc32(compressed, crc)
+                datalen += len(compressed)
+                out.write(compressed)
+    compressed = compress.flush()
+    if len(compressed) > 0:
+        crc = zlib.crc32(compressed, crc)
+        datalen += len(compressed)
+        out.write(compressed)
+    out.write(struct_crc.pack(crc & 0xffffffff))
+    # IEND
+    out.write(b'\x00\x00\x00\x00IEND\xae\x42\x60\x82')
+    # Go back and write length of the IDAT
+    out.seek(length_pos)
+    out.write(struct_len.pack(datalen))
+    out.close()
 
 
 def main():
