@@ -152,14 +152,9 @@ class Grid(object):
             self._finished = True
         if self.size > self.order:
             scale = 2 ** (self.size - self.order)
-            height = int(self.height * scale)
-            width = int(self.width * scale)
-            hscale = height / self.height
-            wscale = width / self.width
-            rows = ((self._grid[int(y//hscale)][int(x//wscale)]
-                     for x in xrange(width))
-                    for y in xrange(height))
-            _write_png(pngfile, width, height, rows)
+            rows = ((pix for pix in row for _ in range(scale))
+                    for row in self._grid for _ in range(scale))
+            _write_png(pngfile, self.width * scale, self.height * scale, rows)
         else:
             _write_png(pngfile, self.width, self.height, self._grid)
 
