@@ -63,7 +63,7 @@ class Grid(object):
         self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
         self.curve = hilbert.curve(self.order)
-        self._dirty = False
+        self._pixel_dirty = False
         self._next_pixel()
         self.height = self.pos.height
         self.width = self.pos.width
@@ -82,14 +82,14 @@ class Grid(object):
             total_bytes, self.bytes_per_pixel, self.pos.num_steps))
 
     def _next_pixel(self):
-        if self._dirty is True:
+        if self._pixel_dirty is True:
             self._finish_pixel()
         self.pos = next(self.curve)
-        self._dirty = False
+        self._pixel_dirty = False
 
     def _add_to_pixel(self, used_pct):
         self._grid[self.pos.y][self.pos.x] += used_pct
-        self._dirty = True
+        self._pixel_dirty = True
 
     def _brightness(self, used_pct):
         return self._min_brightness + int(round(used_pct * (255 - self._min_brightness)))
@@ -98,7 +98,7 @@ class Grid(object):
         self._grid[self.pos.y][self.pos.x] = brightness
 
     def _finish_pixel(self):
-        if self._dirty is False:
+        if self._pixel_dirty is False:
             return
         used_pct = self._grid[self.pos.y][self.pos.x]
         brightness = self._brightness(used_pct)
