@@ -57,25 +57,46 @@ def parse_args():
     return parser.parse_args()
 
 
+struct_color = struct.Struct('!BBB')
+
+black = (0x00, 0x00, 0x00)
+white = (0xff, 0xff, 0xff)
+red = (0xff, 0x00, 0x33)
+blue = (0x00, 0x66, 0xff)
+blue_white = (0x99, 0xcc, 0xff)  # for mixed bg
+
+dev_extent_colors = {
+    btrfs.BLOCK_GROUP_DATA: white,
+    btrfs.BLOCK_GROUP_METADATA: blue,
+    btrfs.BLOCK_GROUP_SYSTEM: red,
+    btrfs.BLOCK_GROUP_DATA | btrfs.BLOCK_GROUP_METADATA: blue_white,
+}
+
+
 class Grid(object):
     def __init__(self, order, size, total_bytes, default_granularity, verbose,
                  min_brightness=None):
         self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
         self.curve = hilbert.curve(self.order)
+        self._pixel_mix = []
         self._pixel_dirty = False
         self._next_pixel()
         self.height = self.pos.height
         self.width = self.pos.width
         self.total_bytes = total_bytes
         self.bytes_per_pixel = total_bytes / self.pos.num_steps
-        self._grid = [[0 for x in xrange(self.width)] for y in xrange(self.height)]
+        self._color_cache = {}
+        self._add_color_cache(black)
+        self._grid = [[self._color_cache[black]
+                       for x in xrange(self.width)]
+                      for y in xrange(self.height)]
         self._finished = False
         if min_brightness is None:
-            self._min_brightness = 16
+            self._min_brightness = 0.1
         else:
-            if min_brightness < 0 or min_brightness > 255:
-                raise ValueError("min_brightness has to be in the range of 0-255")
+            if min_brightness < 0 or min_brightness > 1:
+                raise ValueError("min_brightness out of range (need >= 0 and <= 1)")
             self._min_brightness = min_brightness
         print("grid order {} size {} height {} width {} total_bytes {} bytes_per_pixel {}".format(
             self.order, self.size, self.height, self.width,
@@ -85,28 +106,45 @@ class Grid(object):
         if self._pixel_dirty is True:
             self._finish_pixel()
         self.pos = next(self.curve)
-        self._pixel_dirty = False
 
-    def _add_to_pixel(self, used_pct):
-        self._grid[self.pos.y][self.pos.x] += used_pct
+    def _add_to_pixel_mix(self, color, used_pct, pixel_pct):
+        self._pixel_mix.append((color, used_pct, pixel_pct))
         self._pixel_dirty = True
 
-    def _brightness(self, used_pct):
-        return self._min_brightness + int(round(used_pct * (255 - self._min_brightness)))
+    def _pixel_mix_to_rgbytes(self):
+        R_composite = sum(color[0] * pixel_pct for color, _, pixel_pct in self._pixel_mix)
+        G_composite = sum(color[1] * pixel_pct for color, _, pixel_pct in self._pixel_mix)
+        B_composite = sum(color[2] * pixel_pct for color, _, pixel_pct in self._pixel_mix)
 
-    def _set_pixel_brightness(self, brightness):
-        self._grid[self.pos.y][self.pos.x] = brightness
+        weighted_usage = sum(used_pct * pixel_pct
+                             for _, used_pct, pixel_pct in self._pixel_mix)
+        weighted_usage_min_bright = self._min_brightness + \
+            weighted_usage * (1 - self._min_brightness)
+
+        R = int(round(R_composite * weighted_usage_min_bright))
+        G = int(round(G_composite * weighted_usage_min_bright))
+        B = int(round(B_composite * weighted_usage_min_bright))
+
+        return self._color_cache.get((R, G, B), self._add_color_cache((R, G, B)))
+
+    def _add_color_cache(self, color):
+        rgbytes = struct_color.pack(*color)
+        self._color_cache[color] = rgbytes
+        return rgbytes
+
+    def _set_pixel(self, rgbytes):
+        self._grid[self.pos.y][self.pos.x] = rgbytes
 
     def _finish_pixel(self):
-        if self._pixel_dirty is False:
-            return
-        used_pct = self._grid[self.pos.y][self.pos.x]
-        brightness = self._brightness(used_pct)
-        self._grid[self.pos.y][self.pos.x] = brightness
+        rgbytes = self._pixel_mix_to_rgbytes()
+        self._set_pixel(rgbytes)
         if self.verbose >= 3:
-            print("        pixel {0} brightness {1}".format(self.pos, brightness))
+            print("        pixel {} rgb #{}".format(
+                self.pos, ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
+        self._pixel_mix = []
+        self._pixel_dirty = False
 
-    def fill(self, first_byte, length, used_pct):
+    def fill(self, first_byte, length, used_pct, color=white):
         if self._finished is True:
             raise Exception("Cannot change grid any more after retrieving the result once!")
         first_pixel = int(first_byte / self.bytes_per_pixel)
@@ -119,7 +157,7 @@ class Grid(object):
             pct_of_pixel = length / self.bytes_per_pixel
             if self.verbose >= 2:
                 print("    in_pixel {0} {1:.2f}%".format(first_pixel, pct_of_pixel * 100))
-            self._add_to_pixel(pct_of_pixel * used_pct)
+            self._add_to_pixel_mix(color, used_pct, pct_of_pixel)
         else:
             pct_of_first_pixel = \
                 (self.bytes_per_pixel - (first_byte % self.bytes_per_pixel)) / self.bytes_per_pixel
@@ -131,24 +169,29 @@ class Grid(object):
                 print("    first_pixel {0} {1:.2f}% last_pixel {2} {3:.2f}%".format(
                     first_pixel, pct_of_first_pixel * 100, last_pixel, pct_of_last_pixel * 100))
             # add our part of the first pixel, may be shared with previous fill
-            self._add_to_pixel(pct_of_first_pixel * used_pct)
+            self._add_to_pixel_mix(color, used_pct, pct_of_first_pixel)
             # all intermediate pixels are ours, set brightness directly
             if self.pos.linear < last_pixel - 1:
-                brightness = self._brightness(used_pct)
+                self._next_pixel()
+                self._add_to_pixel_mix(color, used_pct, pixel_pct=1)
+                rgbytes = self._pixel_mix_to_rgbytes()
+                self._set_pixel(rgbytes)
                 if self.verbose >= 3:
-                    print("        pixel range linear {0} to {1} brightness {2}".format(
-                        self.pos.linear, last_pixel - 1, brightness))
+                    print("        pixel range linear {} to {} rgb #{}".format(
+                        self.pos.linear, last_pixel - 1,
+                        ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
                 while self.pos.linear < last_pixel - 1:
                     self._next_pixel()
-                    self._set_pixel_brightness(brightness)
+                    self._set_pixel(rgbytes)
             self._next_pixel()
             # add our part of the last pixel, may be shared with next fill
-            self._add_to_pixel(pct_of_last_pixel * used_pct)
+            self._add_to_pixel_mix(color, used_pct, pct_of_last_pixel)
 
     def write_png(self, pngfile):
         print("pngfile {}".format(pngfile))
         if self._finished is False:
-            self._finish_pixel()
+            if self._pixel_dirty is True:
+                self._finish_pixel()
             self._finished = True
         if self.size > self.order:
             scale = 2 ** (self.size - self.order)
@@ -198,7 +241,8 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
                                             btrfs.utils.block_group_flags_str(block_group.flags),
                                             used_pct * 100))
         first_byte = device_grid_offset[dev_extent.devid] + dev_extent.paddr
-        grid.fill(first_byte, dev_extent.length, used_pct)
+        grid.fill(first_byte, dev_extent.length, used_pct,
+                  dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK])
     return grid
 
 
@@ -282,7 +326,7 @@ def _write_png(pngfile, width, height, rows):
     out.write(b'\x89PNG\r\n\x1a\n')
     # IHDR
     out.write(struct_len.pack(13))
-    ihdr = struct.Struct('!4s2I5B').pack(b'IHDR', width, height, 8, 0, 0, 0, 0)
+    ihdr = struct.Struct('!4s2I5B').pack(b'IHDR', width, height, 8, 2, 0, 0, 0)
     out.write(ihdr)
     out.write(struct_crc.pack(zlib.crc32(ihdr) & 0xffffffff))
     # IDAT
