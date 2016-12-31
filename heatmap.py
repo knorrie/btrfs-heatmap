@@ -61,8 +61,22 @@ struct_color = struct.Struct('!BBB')
 
 black = (0x00, 0x00, 0x00)
 white = (0xff, 0xff, 0xff)
+
+p_red = (0xca, 0x53, 0x5c)
+fuchsia = (0xde, 0x5d, 0x94)
+curry = (0xf9, 0xe1, 0x7e)
+clover = (0x6e, 0xa6, 0x34)
+moss = (0x81, 0x88, 0x3c)
+bluebell = (0xaa, 0xcc, 0xeb)
+pool = (0x8f, 0xdd, 0xea)
+beet = (0x9d, 0x54, 0x9c)
+aubergine = (0x6a, 0x5a, 0x7f)
+plum = (0xdb, 0xc9, 0xea)
+slate = (0x75, 0x77, 0x7b)
+chocolate = (0x6f, 0x5e, 0x55)
+
 red = (0xff, 0x00, 0x33)
-blue = (0x00, 0x66, 0xff)
+blue = (0x00, 0x00, 0xff)
 blue_white = (0x99, 0xcc, 0xff)  # for mixed bg
 
 dev_extent_colors = {
@@ -70,6 +84,19 @@ dev_extent_colors = {
     btrfs.BLOCK_GROUP_METADATA: blue,
     btrfs.BLOCK_GROUP_SYSTEM: red,
     btrfs.BLOCK_GROUP_DATA | btrfs.BLOCK_GROUP_METADATA: blue_white,
+}
+
+metadata_extent_colors = {
+    btrfs.ctree.ROOT_TREE_OBJECTID: p_red,
+    btrfs.ctree.EXTENT_TREE_OBJECTID: beet,
+    btrfs.ctree.CHUNK_TREE_OBJECTID: moss,
+    btrfs.ctree.DEV_TREE_OBJECTID: aubergine,
+    btrfs.ctree.FS_TREE_OBJECTID: bluebell,
+    btrfs.ctree.CSUM_TREE_OBJECTID: clover,
+    btrfs.ctree.QUOTA_TREE_OBJECTID: fuchsia,
+    btrfs.ctree.UUID_TREE_OBJECTID: chocolate,
+    btrfs.ctree.FREE_SPACE_TREE_OBJECTID: plum,
+    btrfs.ctree.DATA_RELOC_TREE_OBJECTID: slate,
 }
 
 
@@ -246,6 +273,17 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
     return grid
 
 
+def _get_metadata_root(extent):
+    if extent.refs > 1:
+        return btrfs.ctree.FS_TREE_OBJECTID
+    if len(extent.shared_block_refs) > 0:
+        return btrfs.ctree.FS_TREE_OBJECTID
+    root = extent.tree_block_refs[0].root
+    if root >= btrfs.ctree.FIRST_FREE_OBJECTID and root <= btrfs.ctree.LAST_FREE_OBJECTID:
+        return btrfs.ctree.FS_TREE_OBJECTID
+    return root
+
+
 def walk_extents(fs, block_groups, order=None, size=None, default_granularity=None, verbose=0):
     if isinstance(block_groups, types.GeneratorType):
         block_groups = list(block_groups)
@@ -259,7 +297,7 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
     total_bytes = 0
     block_group_grid_offset = {}
     for block_group in block_groups:
-        block_group_grid_offset[block_group] = total_bytes
+        block_group_grid_offset[block_group] = total_bytes - block_group.vaddr
         total_bytes += block_group.length
 
     grid = Grid(order, size, total_bytes, default_granularity, verbose)
@@ -268,20 +306,49 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
     for block_group in block_groups:
         if verbose > 0:
             print(block_group)
-        min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
-        max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) - 1
-        for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
-            if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
-                length = header.offset
-            elif header.type == btrfs.ctree.METADATA_ITEM_KEY:
-                length = nodesize
-            else:
-                continue
-            first_byte = block_group_grid_offset[block_group] + header.objectid - block_group.vaddr
-            if verbose >= 1:
-                print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
-                    header.objectid, first_byte, btrfs.ctree.key_type_str(header.type), length))
-            grid.fill(first_byte, length, 1)
+        if block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK == btrfs.BLOCK_GROUP_DATA:
+            # Only DATA, so also not DATA|METADATA (mixed).  In this case we
+            # take a shortcut. Since we know that all extents are data extents,
+            # which get their usual white color, we don't need to load the
+            # actual extent objects.
+            min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
+            max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) - 1
+            for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
+                if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
+                    length = header.offset
+                    first_byte = block_group_grid_offset[block_group] + header.objectid
+                    if verbose >= 1:
+                        print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
+                            header.objectid, first_byte,
+                            btrfs.ctree.key_type_str(header.type), length))
+                    grid.fill(first_byte, length, 1, white)
+
+        else:
+            # The block group is METADATA or DATA|METADATA or SYSTEM (chunk
+            # tree metadata).  We load all extent info to figure out which
+            # btree root metadata extents belong to.
+            min_vaddr = block_group.vaddr
+            max_vaddr = block_group.vaddr + block_group.length - 1
+            for extent in fs.extents(min_vaddr, max_vaddr,
+                                     load_data_refs=True, load_metadata_refs=True):
+                if isinstance(extent, btrfs.ctree.ExtentItem):
+                    length = extent.length
+                    if extent.flags & btrfs.ctree.EXTENT_FLAG_DATA:
+                        color = white
+                    elif extent.flags & btrfs.ctree.EXTENT_FLAG_TREE_BLOCK:
+                        color = metadata_extent_colors[_get_metadata_root(extent)]
+                    else:
+                        raise Exception("BUG: expected either DATA or TREE_BLOCK flag, but got "
+                                        "{}".format(btrfs.utils.extent_flags_str(extent.flags)))
+                elif isinstance(extent, btrfs.ctree.MetaDataItem):
+                    length = nodesize
+                    color = metadata_extent_colors[_get_metadata_root(extent)]
+                first_byte = block_group_grid_offset[block_group] + extent.vaddr
+                if verbose >= 1:
+                    print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
+                          extent.vaddr, first_byte,
+                          btrfs.ctree.key_type_str(extent.key.type), length))
+                grid.fill(first_byte, length, 1, color)
     return grid
 
 
