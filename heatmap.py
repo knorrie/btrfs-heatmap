@@ -3,7 +3,6 @@
 from __future__ import division, print_function, absolute_import, unicode_literals
 import argparse
 import btrfs
-import hilbert
 import os
 import struct
 import sys
@@ -100,19 +99,63 @@ metadata_extent_colors = {
 }
 
 
+def hilbert(order):
+    U = (-1, 0)
+    R = (0, 1)
+    D = (1, 0)
+    L = (0, -1)
+
+    URDR = (U, R, D, R)
+    RULU = (R, U, L, U)
+    URDD = (U, R, D, D)
+    LDRR = (L, D, R, R)
+    RULL = (R, U, L, L)
+    DLUU = (D, L, U, U)
+    LDRD = (L, D, R, D)
+    DLUL = (D, L, U, L)
+
+    inception = {
+        URDR: (RULU, URDR, URDD, LDRR),
+        RULU: (URDR, RULU, RULL, DLUU),
+        URDD: (RULU, URDR, URDD, LDRD),
+        LDRR: (DLUL, LDRD, LDRR, URDR),
+        RULL: (URDR, RULU, RULL, DLUL),
+        DLUU: (LDRD, DLUL, DLUU, RULU),
+        LDRD: (DLUL, LDRD, LDRR, URDD),
+        DLUL: (LDRD, DLUL, DLUU, RULL)
+    }
+
+    pos = [(2 ** order) - 1, 0, 0]  # y, x, linear
+
+    def walk(steps, level):
+        if level > 1:
+            for substeps in inception[steps]:
+                for subpos in walk(substeps, level - 1):
+                    yield subpos
+        else:
+            for step in steps:
+                yield pos
+                pos[0] += step[0]  # y
+                pos[1] += step[1]  # x
+                pos[2] += 1  # linear
+
+    return walk(URDR, order)
+
+
 class Grid(object):
     def __init__(self, order, size, total_bytes, default_granularity, verbose,
                  min_brightness=None):
         self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
-        self.curve = hilbert.curve(self.order)
+        self.curve = hilbert(self.order)
         self._pixel_mix = []
         self._pixel_dirty = False
         self._next_pixel()
-        self.height = self.pos.height
-        self.width = self.pos.width
+        self.height = 2 ** self.order
+        self.width = 2 ** self.order
+        self.num_steps = (2 ** self.order) ** 2
         self.total_bytes = total_bytes
-        self.bytes_per_pixel = total_bytes / self.pos.num_steps
+        self.bytes_per_pixel = total_bytes / self.num_steps
         self._color_cache = {}
         self._add_color_cache(black)
         self._grid = [[self._color_cache[black]
@@ -127,12 +170,12 @@ class Grid(object):
             self._min_brightness = min_brightness
         print("grid order {} size {} height {} width {} total_bytes {} bytes_per_pixel {}".format(
             self.order, self.size, self.height, self.width,
-            total_bytes, self.bytes_per_pixel, self.pos.num_steps))
+            total_bytes, self.bytes_per_pixel, self.num_steps))
 
     def _next_pixel(self):
         if self._pixel_dirty is True:
             self._finish_pixel()
-        self.pos = next(self.curve)
+        self.y, self.x, self.linear = next(self.curve)
 
     def _add_to_pixel_mix(self, color, used_pct, pixel_pct):
         self._pixel_mix.append((color, used_pct, pixel_pct))
@@ -160,14 +203,15 @@ class Grid(object):
         return rgbytes
 
     def _set_pixel(self, rgbytes):
-        self._grid[self.pos.y][self.pos.x] = rgbytes
+        self._grid[self.y][self.x] = rgbytes
 
     def _finish_pixel(self):
         rgbytes = self._pixel_mix_to_rgbytes()
         self._set_pixel(rgbytes)
         if self.verbose >= 3:
-            print("        pixel {} rgb #{}".format(
-                self.pos, ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
+            print("        pixel y {} x{} linear {} rgb #{}".format(
+                self.y, self.x, self.linear,
+                ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
         self._pixel_mix = []
         self._pixel_dirty = False
 
@@ -177,7 +221,7 @@ class Grid(object):
         first_pixel = int(first_byte / self.bytes_per_pixel)
         last_pixel = int((first_byte + length - 1) / self.bytes_per_pixel)
 
-        while self.pos.linear < first_pixel:
+        while self.linear < first_pixel:
             self._next_pixel()
 
         if first_pixel == last_pixel:
@@ -198,16 +242,16 @@ class Grid(object):
             # add our part of the first pixel, may be shared with previous fill
             self._add_to_pixel_mix(color, used_pct, pct_of_first_pixel)
             # all intermediate pixels are ours, set brightness directly
-            if self.pos.linear < last_pixel - 1:
+            if self.linear < last_pixel - 1:
                 self._next_pixel()
                 self._add_to_pixel_mix(color, used_pct, pixel_pct=1)
                 rgbytes = self._pixel_mix_to_rgbytes()
                 self._set_pixel(rgbytes)
                 if self.verbose >= 3:
                     print("        pixel range linear {} to {} rgb #{}".format(
-                        self.pos.linear, last_pixel - 1,
+                        self.linear, last_pixel - 1,
                         ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
-                while self.pos.linear < last_pixel - 1:
+                while self.linear < last_pixel - 1:
                     self._next_pixel()
                     self._set_pixel(rgbytes)
             self._next_pixel()
