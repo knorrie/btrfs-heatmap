@@ -402,7 +402,10 @@ def choose_order_size(order=None, size=None, total_bytes=None, default_granulari
         import math
         order = min(10, int(math.ceil(math.log(math.sqrt(total_bytes/default_granularity), 2))))
     if size is None:
-        size = 10
+        if order > 10:
+            size = order
+        else:
+            size = 10
     if size < order:
         if order_was_none:
             order = size
