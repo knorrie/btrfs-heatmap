@@ -1,1 +1,3 @@
 *.png
+!*/*.png
+btrfs

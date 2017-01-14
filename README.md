@@ -1,7 +1,8 @@
 Btrfs Heatmap
 =============
 
-The btrfs heatmap script creates a visualization of how a btrfs filesystem is using the underlying raw disk space of the block devices that are added to it.
+The btrfs heatmap script creates a visualization of how a btrfs filesystem is
+using the underlying raw disk space of the block devices that are added to it.
 
 ## What does it look like?
 
@@ -10,92 +11,86 @@ The btrfs heatmap script creates a visualization of how a btrfs filesystem is us
 ![filesystem](doc/example-238gib.png)|
 
 
-This picture shows the 238GiB filesystem in my computer at work. It was generated using the command `./heatmap.py --size 8 /`, resulting in a 256x256 pixel png. The black parts are unallocated disk space. Raw disk space that is allocated to be used for data or metadata gets brighter if the fill factor of block groups is higher.
+This picture shows the 238GiB filesystem in my computer at work. It was
+generated using the command `./heatmap.py --size 9 /`, resulting in a 512x512
+pixel png. The black parts are unallocated disk space. Raw disk space that is
+allocated to be used for data (white), metadata (blue) or system (red) gets
+brighter if the fill factor of block groups is higher.
 
+## How do I create a picture like this of my own computer?
+
+To run the program, you need to clone two git repositories:
+* [btrfs-heatmap (this project)](https://github.com/knorrie/btrfs-heatmap.git)
+* [python-btrfs (used to retrieve usage from btrfs)](https://github.com/knorrie/python-btrfs.git)
+
+The fastest way to get it running is:
 ```
-Label: none  uuid: ed10a358-c846-4e76-a071-3821d423a99d
-    Total devices 1 FS bytes used 132.74GiB
-    devid    1 size 237.54GiB used 152.01GiB path /dev/mapper/sda2_crypt
-```
-
-The filesystem has 152.01GiB of the 237.54GiB allocated, in which actually only 132.74GiB is used. The picture gives an idea about the distribution of that data inside the allocated space.
-
-The ordering inside the picture is based on a [Hilbert Curve](https://en.wikipedia.org/wiki/File:Hilbert_curve.svg). The lowest physical address of the block devices is located in the bottom left corner. From there it walks up, to the right and down again.
-
-## Can I see usage in more detail?
-
-The filesystem level only displays a certain greyscale value for entire block groups. By specifying a block group address, we can also get a view on the distribution of data inside a single block group. This shows for example how fragmented the free space inside the block group is.
-
-1GiB DATA block group    | 1GiB METADATA block group
-:-------------------------:|:-------:|
- ![data](doc/example-data.png) | ![metadata](doc/example-metadata.png)
-
-I used [`show_block_groups.py`](https://github.com/knorrie/python-btrfs/blob/master/examples/show_block_groups.py), one of the small examples programs that you can find in [python-btrfs](https://github.com/knorrie/python-btrfs), to list all block groups in the filesystem, and then chose two of them:
-
-```
-block group vaddr 163229728768 length 1073741824 flags DATA used 370114560 used_pct 34
-block group vaddr 20971520 length 1073741824 flags METADATA used 612417536 used_pct 57
+-$ git clone https://github.com/knorrie/btrfs-heatmap.git
+-$ git clone https://github.com/knorrie/python-btrfs.git
+-$ cd btrfs-heatmap
+btrfs-heatmap (master) -$ ln -s ../python-btrfs/btrfs/
+btrfs-heatmap (master) -$ sudo ./heatmap.py /mountpoint
 ```
 
-Then I created the images using the following commands:
+When pointing heatmap.py to a mounted btrfs filesystem location, it will ask
+the linux kernel for usage information and build a png picture reflecting that
+low level information.
 
+Because the needed information is retrieved using the btrfs kernel API, it has
+to be run as root. :| If you don't trust it, don't run it on your system.
+
+## Ok, I have a picture now, with quite a long filename, what do I see here?
+
+The filename of the png picture is a combination of the filesystem ID and a
+timestamp by default, so that if you create multiple of them, they nicely pile
+up as input for creating a timelapse video.
+
+The picture shows the usage of the physical disk space, like I explained above.
+The ordering inside the picture is based on a [Hilbert
+Curve](https://en.wikipedia.org/wiki/File:Hilbert_curve.svg). The lowest
+physical address of the block devices is located in the bottom left corner.
+From there it walks up, to the right and down again.
+
+In technical btrfs terms speaking: The picture shows the physical address space
+of a filesystem, by walking all dev extents of all devices in the filesystem
+using the search ioctl and concatenating all information into a single big
+image. The usage values are computed by looking up usage counters in the block
+group items from the extent tree.
+
+## A single picture is a bit boring...
+
+Here's an example command to create an mp4 video out of all the png files if
+you create multiple ones over time:
 ```
--# ./heatmap.py --blockgroup 163229728768 --size 8 /
--# ./heatmap.py --blockgroup 20971520 --size 8 /
+ffmpeg -framerate 2 -pattern_type glob -i '*.png' -c:v libx264 -r 25 -pix_fmt yuv420p btrfs-heatmap.mp4
 ```
+By varying the `-framerate` option, you can make the video go faster or slower.
 
-For size 8, I get a picture with height and witdth of 256 pixels, which means that to view a total of 1GiB, each pixel represents 16kiB of data.
-
-## More usage instructions!
-
-The code in here has one dependency, which is the [python-btrfs](https://github.com/knorrie/python-btrfs) library (>= v0.3), used to gather all usage information.
-
-The program has a built in help function that shows the options it accepts:
-
+Another option is to create an animated gif. By varying the `-delay` option,
+you change the speed.
 ```
-usage: heatmap.py [-h] [--order ORDER] [--size SIZE] [--blockgroup BLOCKGROUP]
-                  [-v] [-o PNGFILE]
-                  mountpoint
-
-positional arguments:
-  mountpoint            Btrfs filesystem mountpoint
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --order ORDER         Hilbert curve order (default: automatically chosen)
-  --size SIZE           Image size (default: 10). Height/width is 2^size
-  --blockgroup BLOCKGROUP
-                        Instead of a filesystem overview, show extents in a
-                        block group
-  -v, --verbose         increase debug output verbosity (-v, -vv, -vvv, etc)
-  -o PNGFILE, --output PNGFILE
-                        Output png file name or directory (default: filename
-                        automatically chosen)
-```
-
-So, creating an image can be done by pointing `heatmap.py` to a mounted filesystem, for example `./heatmap.py /home`. By default, the filename for the png is chosen automatically, containing the ID of the filesystem, optionally a block group address, and a timestamp, for example `fsid_ed10a358-c846-4e76-a071-3821d423a99d_blockgroup_20971520_at_1479165679.png`.
-
-And, because the needed information is retrieved using the btrfs kernel API, it has to be run as root. :|
-
-## Why did you create this program?
-
-For fun! `\:D/`
-
-And if gets even more fun when you take multiple pictures and compare them, for example before and after, or even during playing around with `btrfs balance`.
-
-If the filesystem being observed is not too big, it can be fun and educating to just do `watch './heatmap.py -o samefile.png /mountpoint'` and open an image viewer program that automatically refreshes the image when a new one is written. Also, doing `watch -d '.../python-btrfs/examples/show_block_groups.py /mountpoint'` in another terminal shows the data moving around ordered by logical addresses of the block groups.
-
-On a few filesystems, I have a cron job set up which generates a picture every day, so I can turn them into a movie that shows data being added, removed and moved around over time.
-
-Here's an example of a video of a 2TiB filesystem (links to a video on youtube):
-
-[![heatmap video](http://img.youtube.com/vi/Qj1lxAasytc/0.jpg)](https://youtu.be/Qj1lxAasytc)
-
-Here's the command used to create an mp4 video out of all the pngs:
-
-```
-ffmpeg -framerate 2 -pattern_type glob -i '*.png' -c:v libx264 -r 30 -pix_fmt yuv420p out.mp4
+convert -layers optimize-frame -loop 0 -delay 20 *.png btrfs-heatmap.gif
 ```
 
-Have fun!
-Knorrie
+The next picture is an animated gif of running `btrfs balance` on the data of
+the filesystem which the first picture was also taken of. You can see how all
+free space is defragmented by packing data together:
+
+btrfs balance |
+:--------------------------:|
+![animated gif balance](doc/animated-balance-small.gif)|
+
+## More advanced usage
+
+* [Extent level pictures](doc/extent.md) show detailed usage of the virtual
+  address space inside block groups.
+* By [scripting btrfs-heatmap](doc/scripting.md) it's possible to make pictures
+  of single devices, or any combination of block groups.
+
+## Feedback
+
+Let me know if this program was useful for you, or if you have brilliant ideas
+about how to improve it.
+
+You can reach me on IRC in #btrfs on Freenode (I'm Knorrie), or send me an
+email on hans@knorrie.org
