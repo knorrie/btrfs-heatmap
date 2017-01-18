@@ -50,6 +50,12 @@ def parse_args():
         help="Output png file name or directory (default: filename automatically chosen)",
     )
     parser.add_argument(
+        "--curve",
+        choices=['hilbert', 'linear', 'snake'],
+        default='hilbert',
+        help="Space filling curve type or alternative. Default is hilbert.",
+    )
+    parser.add_argument(
         "mountpoint",
         help="Btrfs filesystem mountpoint",
     )
@@ -142,12 +148,43 @@ def hilbert(order):
     return walk(URDR, order)
 
 
+def linear(order):
+    edge_len = 2 ** order
+    l = 0
+    for y in xrange(0, edge_len):
+        for x in xrange(0, edge_len):
+            yield (y, x, l)
+            l += 1
+
+
+def snake(order):
+    edge_len = 2 ** order
+    l = 0
+    for y in xrange(0, edge_len, 2):
+        for x in range(0, edge_len):
+            yield (y, x, l)
+            l += 1
+        y += 1
+        for x in range(edge_len - 1, -1, -1):
+            yield (y, x, l)
+            l += 1
+
+
+curves = {
+    'hilbert': hilbert,
+    'linear': linear,
+    'snake': snake,
+}
+
+
 class Grid(object):
     def __init__(self, order, size, total_bytes, default_granularity, verbose,
-                 min_brightness=None):
+                 min_brightness=None, curve=None):
         self.order, self.size = choose_order_size(order, size, total_bytes, default_granularity)
         self.verbose = verbose
-        self.curve = hilbert(self.order)
+        if curve is None:
+            curve = 'hilbert'
+        self.curve = curves.get(curve)(self.order)
         self._pixel_mix = []
         self._pixel_dirty = False
         self._next_pixel()
@@ -168,9 +205,10 @@ class Grid(object):
             if min_brightness < 0 or min_brightness > 1:
                 raise ValueError("min_brightness out of range (need >= 0 and <= 1)")
             self._min_brightness = min_brightness
-        print("grid order {} size {} height {} width {} total_bytes {} bytes_per_pixel {}".format(
-            self.order, self.size, self.height, self.width,
-            total_bytes, self.bytes_per_pixel, self.num_steps))
+        print("grid curve {} order {} size {} height {} width {} total_bytes {} "
+              "bytes_per_pixel {}".format(curve, self.order, self.size,
+                                          self.height, self.width, total_bytes,
+                                          self.bytes_per_pixel, self.num_steps))
 
     def _next_pixel(self):
         if self._pixel_dirty is True:
@@ -278,7 +316,7 @@ class Grid(object):
 
 
 def walk_dev_extents(fs, devices=None, order=None, size=None,
-                     default_granularity=33554432, verbose=0, min_brightness=None):
+                     default_granularity=33554432, verbose=0, min_brightness=None, curve=None):
     if devices is None:
         devices = list(fs.devices())
         dev_extents = fs.dev_extents()
@@ -296,7 +334,7 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
         device_grid_offset[device.devid] = total_bytes
         total_bytes += device.total_bytes
 
-    grid = Grid(order, size, total_bytes, default_granularity, verbose, min_brightness)
+    grid = Grid(order, size, total_bytes, default_granularity, verbose, min_brightness, curve)
     block_group_cache = {}
     for dev_extent in dev_extents:
         if dev_extent.vaddr in block_group_cache:
@@ -332,7 +370,8 @@ def _get_metadata_root(extent):
     return root
 
 
-def walk_extents(fs, block_groups, order=None, size=None, default_granularity=None, verbose=0):
+def walk_extents(fs, block_groups, order=None, size=None, default_granularity=None, verbose=0,
+                 curve=None):
     if isinstance(block_groups, types.GeneratorType):
         block_groups = list(block_groups)
     fs_info = fs.fs_info()
@@ -348,7 +387,7 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
         block_group_grid_offset[block_group] = total_bytes - block_group.vaddr
         total_bytes += block_group.length
 
-    grid = Grid(order, size, total_bytes, default_granularity, verbose)
+    grid = Grid(order, size, total_bytes, default_granularity, verbose, curve=curve)
 
     tree = btrfs.ctree.EXTENT_TREE_OBJECTID
     for block_group in block_groups:
@@ -485,14 +524,16 @@ def main():
 
     bg_vaddr = args.blockgroup
     if bg_vaddr is None:
-        grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose)
+        grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
+                                curve=args.curve)
         filename_parts = ['fsid', fs.fsid]
     else:
         try:
             block_group = fs.block_group(bg_vaddr)
         except IndexError:
             raise HeatmapError("Error: no block group at vaddr {}!".format(bg_vaddr))
-        grid = walk_extents(fs, [block_group], order=args.order, size=args.size, verbose=verbose)
+        grid = walk_extents(fs, [block_group], order=args.order, size=args.size, verbose=verbose,
+                            curve=args.curve)
         filename_parts = ['fsid', fs.fsid, 'blockgroup', block_group.vaddr]
 
     grid.write_png(generate_png_file_name(args.output, filename_parts))
