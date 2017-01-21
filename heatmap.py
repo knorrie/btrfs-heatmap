@@ -434,13 +434,13 @@ def generate_png_file_name(output=None, parts=None):
     return os.path.join(output_dir, output_file)
 
 
-def _write_png(pngfile, width, height, rows):
+def _write_png(pngfile, width, height, rows, color_type=2):
     struct_len = struct_crc = struct.Struct('!I')
     out = open(pngfile, 'wb')
     out.write(b'\x89PNG\r\n\x1a\n')
     # IHDR
     out.write(struct_len.pack(13))
-    ihdr = struct.Struct('!4s2I5B').pack(b'IHDR', width, height, 8, 2, 0, 0, 0)
+    ihdr = struct.Struct('!4s2I5B').pack(b'IHDR', width, height, 8, color_type, 0, 0, 0)
     out.write(ihdr)
     out.write(struct_crc.pack(zlib.crc32(ihdr) & 0xffffffff))
     # IDAT
