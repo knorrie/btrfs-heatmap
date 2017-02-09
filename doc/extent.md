@@ -8,17 +8,17 @@ example how fragmented the free space inside the block group is.
 
 1GiB DATA block group    | 512MiB DUP METADATA block group
 :-------------------------:|:-------:|
- ![data](example-data.png) | ![metadata](example-metadata.png)
+ ![data](extent/example-data.png) | ![metadata](extent/example-metadata.png)
 
 Metadata tree blocks get colored depending on the tree they belong to:
 
  Color | Tree | Color | Tree |
 :-----:|:----:|:-----:|:----:|
-![ROOT](ROOT_TREE.png) | ROOT (1) | ![CSUM](CSUM_TREE.png) | CSUM (7) |
-![EXTENT](EXTENT_TREE.png) | EXTENT (2) | ![QUOTA](QUOTA_TREE.png) | QUOTA (8) |
-![CHUNK](CHUNK_TREE.png) | CHUNK (3) | ![UUID](UUID_TREE.png) | UUID (9) |
-![DEV](DEV_TREE.png) | DEV (4) | ![FREE SPACE](FREE_SPACE_TREE.png) | FREE SPACE (10) |
-![FS](FS_TREE.png) | FS (5, 256+) | ![DATA RELOC](DATA_RELOC_TREE.png) | DATA RELOC (-9) |
+![ROOT](extent/ROOT_TREE.png) | ROOT (1) | ![CSUM](extent/CSUM_TREE.png) | CSUM (7) |
+![EXTENT](extent/EXTENT_TREE.png) | EXTENT (2) | ![QUOTA](extent/QUOTA_TREE.png) | QUOTA (8) |
+![CHUNK](extent/CHUNK_TREE.png) | CHUNK (3) | ![UUID](extent/UUID_TREE.png) | UUID (9) |
+![DEV](extent/DEV_TREE.png) | DEV (4) | ![FREE SPACE](extent/FREE_SPACE_TREE.png) | FREE SPACE (10) |
+![FS](extent/FS_TREE.png) | FS (5, 256+) | ![DATA RELOC](extent/DATA_RELOC_TREE.png) | DATA RELOC (-9) |
 
 The `heatmap.py` program can take a `--blockgroup` argument, which needs a
 vaddr of a block group as argument.

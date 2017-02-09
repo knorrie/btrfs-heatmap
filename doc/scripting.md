@@ -85,7 +85,7 @@ pngfile full-fs.png
 
 20 GiB file system    |
 :-------------------------:|
-![Full FS](scripting-full-fs.png) |
+![Full FS](scripting/full-fs.png) |
 
 ### 2.2 The four newest DATA block groups together
 
@@ -115,7 +115,7 @@ we can easily repeat it to get images which can be put together into a timelapse
 
 4 newest DATA block groups    |
 :-------------------------:|
-![Four block groups](scripting-4-highest.png) |
+![Four block groups](scripting/4-highest.png) |
 
 ### 2.3 Show usage, separate image per device, more verbose output
 
@@ -186,4 +186,4 @@ very detailed, but very big picture can be made.
 
 All block groups    |
 :-------------------------:|
-![All block groups](scripting-all-bg.png) |
+![All block groups](scripting/all-bg.png) |
