@@ -191,11 +191,15 @@ class Grid(object):
         weighted_usage_min_bright = self._min_brightness + \
             weighted_usage * (1 - self._min_brightness)
 
-        R = int(round(R_composite * weighted_usage_min_bright))
-        G = int(round(G_composite * weighted_usage_min_bright))
-        B = int(round(B_composite * weighted_usage_min_bright))
+        RGB = (
+            int(round(R_composite * weighted_usage_min_bright)),
+            int(round(G_composite * weighted_usage_min_bright)),
+            int(round(B_composite * weighted_usage_min_bright)),
+        )
 
-        return self._color_cache.get((R, G, B), self._add_color_cache((R, G, B)))
+        if RGB in self._color_cache:
+            return self._color_cache[RGB]
+        return self._add_color_cache(RGB)
 
     def _add_color_cache(self, color):
         rgbytes = struct_color.pack(*color)
