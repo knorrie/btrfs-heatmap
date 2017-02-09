@@ -33,6 +33,12 @@ def parse_args():
         help="Image size (default: 10). Height/width is 2^size",
     )
     parser.add_argument(
+        "--sort",
+        choices=['physical', 'virtual'],
+        default='physical',
+        help="Show disk usage sorted on dev_extent (physical) or chunk/stripe (virtual)"
+    )
+    parser.add_argument(
         "--blockgroup",
         type=int,
         help="Instead of a filesystem overview, show extents in a block group",
@@ -315,6 +321,31 @@ class Grid(object):
             _write_png(pngfile, self.width, self.height, self._grid)
 
 
+def walk_chunks(fs, order=None, size=None,
+                default_granularity=33554432, verbose=0, min_brightness=None, curve=None):
+    print("scope chunks")
+    total_bytes = sum(device.total_bytes for device in fs.devices())
+
+    grid = Grid(order, size, total_bytes, default_granularity, verbose, min_brightness, curve)
+    byte_offset = 0
+    for chunk in fs.chunks():
+        try:
+            block_group = fs.block_group(chunk.vaddr, chunk.length)
+        except IndexError:
+            continue
+        used_pct = block_group.used / block_group.length
+        length = chunk.length * len(chunk.stripes)
+        if verbose >= 1:
+            print(block_group)
+            print(chunk)
+            for stripe in chunk.stripes:
+                print("    {}".format(stripe))
+        grid.fill(byte_offset, length, used_pct,
+                  dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK])
+        byte_offset += length
+    return grid
+
+
 def walk_dev_extents(fs, devices=None, order=None, size=None,
                      default_granularity=33554432, verbose=0, min_brightness=None, curve=None):
     if devices is None:
@@ -527,8 +558,15 @@ def main():
         filename_parts.append(args.curve)
     bg_vaddr = args.blockgroup
     if bg_vaddr is None:
-        grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
-                                curve=args.curve)
+        if args.sort == 'physical':
+            grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
+                                    curve=args.curve)
+        elif args.sort == 'virtual':
+            filename_parts.append('chunks')
+            grid = walk_chunks(fs, order=args.order, size=args.size, verbose=verbose,
+                               curve=args.curve)
+        else:
+            raise HeatmapError("Invalid sort option {}".format(args.sort))
     else:
         try:
             block_group = fs.block_group(bg_vaddr)
