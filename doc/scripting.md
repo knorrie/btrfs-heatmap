@@ -18,7 +18,7 @@ after which I'll show some examples of how to use them.
 
 ```python
 walk_dev_extents(fs, devices=None, order=None, size=None,
-                 default_granularity=33554432, verbose=0)
+                 default_granularity=33554432, verbose=0, curve=None)
 ```
 
  * `fs` is a btrfs.FileSystem object.
@@ -36,17 +36,19 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
    curve order to use. By default, this is 32MiB.
  * A higher number for `verbose` makes the output more verbose (like `-vvv` on
    the command line of `heatmap.py` would be `verbose=3`).
+ * `curve` is either 'hilbert' (the default), 'snake', or 'linear'
 
 ### 1.2 Working with block groups, extent level picture
 
 ```python
 walk_extents(fs, block_groups, order=None, size=None,
-             default_granularity=None, verbose=0)
+             default_granularity=None, verbose=0, curve=None)
 ```
 
  * `block_groups` is a list of one or multiple block group objects.
  * For block group internals, `default_granularity` defaults to the sector size
    of the filesystem, which is often 4096 bytes.
+ * for other options, see above
 
 ### 1.3 A helper for generating file names
 

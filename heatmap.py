@@ -522,11 +522,13 @@ def main():
     fs_info = fs.fs_info()
     print(fs_info)
 
+    filename_parts = ['fsid', fs.fsid]
+    if args.curve != 'hilbert':
+        filename_parts.append(args.curve)
     bg_vaddr = args.blockgroup
     if bg_vaddr is None:
         grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
                                 curve=args.curve)
-        filename_parts = ['fsid', fs.fsid]
     else:
         try:
             block_group = fs.block_group(bg_vaddr)
@@ -534,7 +536,7 @@ def main():
             raise HeatmapError("Error: no block group at vaddr {}!".format(bg_vaddr))
         grid = walk_extents(fs, [block_group], order=args.order, size=args.size, verbose=verbose,
                             curve=args.curve)
-        filename_parts = ['fsid', fs.fsid, 'blockgroup', block_group.vaddr]
+        filename_parts.extend(['blockgroup', block_group.vaddr])
 
     grid.write_png(generate_png_file_name(args.output, filename_parts))
 
