@@ -18,7 +18,8 @@ after which I'll show some examples of how to use them.
 
 ```python
 walk_dev_extents(fs, devices=None, order=None, size=None,
-                 default_granularity=33554432, verbose=0, curve=None)
+                 default_granularity=33554432, verbose=0,
+                 min_brightness=None, curve=None)
 ```
 
  * `fs` is a btrfs.FileSystem object.
@@ -36,6 +37,9 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
    curve order to use. By default, this is 32MiB.
  * A higher number for `verbose` makes the output more verbose (like `-vvv` on
    the command line of `heatmap.py` would be `verbose=3`).
+ * `min_brightness` (0 <= `min_brightness` <= 1, default 0.1) sets the minimal
+   brightness of pixels that are part of allocated space, to be able to
+   distinguish them from unallocated space when usage is really low.
  * `curve` is either 'hilbert' (the default), 'snake', or 'linear'
 
 ### 1.2 Working with block groups, extent level picture
