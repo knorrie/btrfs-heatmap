@@ -1,0 +1,48 @@
+.TH BTRFS\-HEATMAP 8 " 2017" "" "Btrfs Heatmap"
+.nh
+.ad l
+
+.SH "NAME"
+btrfs\-heatmap \- visualize the layout of data on your btrfs filesystem
+
+.SH SYNOPSIS
+.B btrfs\-heatmap
+[\fIargs\fR]
+.IR mountpoint
+
+.SH DESCRIPTION
+The \fBbtrfs\-heatmap\fR script creates a visualization of how a btrfs
+filesystem is utilizing the underlying disk space of the block devices that are
+added to it.
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Show the built\-in help message and exit.
+.TP
+.BR "\-\-order " \fIorder
+Hilbert curve order (default: automatically chosen)
+.TP
+.BR "\-\-size " \fIsize
+Image size (default: 10). Height/width is 2^size
+.TP
+.BR "\-\-sort " { \fBphysical | \fBvirtual }
+Show disk usage sorted on dev_extent (physical, default) or chunk/stripe
+(virtual).
+.TP
+.BR "\-\-blockgroup " \fIvaddr
+Instead of a filesystem overview, show extents in the block group starting at
+virtual address \fIvaddr\fR.
+.TP
+.BR "\-\-curve " { \fBhilbert | \fBlinear | \fBsnake }
+Space filling curve type or alternative. Default is hilbert.
+.TP
+.BR \-v ", " \-\-verbose
+Increase debug output verbosity. May be specified multiple times to increase
+verbosity. (\fB\-v\fR, \fB\-vv\fR, \fB\-vvv\fR, etc...)
+.TP
+.BR \-o ", " "\-\-output " { \fIfilename | \fIdirectory }
+Output png file name or directory (default: filename automatically chosen)
+
+.SH "SEE ALSO"
+Source and documentation on github: https://github.com/knorrie/btrfs-heatmap

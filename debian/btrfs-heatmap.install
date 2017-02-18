@@ -1,0 +1,3 @@
+#! /usr/bin/dh-exec --with=install
+
+heatmap.py => /usr/sbin/btrfs-heatmap

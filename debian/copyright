@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: btrfs-heatmap
+Upstream-Contact: Hans van Kranenburg <hans@knorrie.org>
+
+Files: *
+Copyright: 2017 Hans van Kranenburg <hans@knorrie.org>
+License: GPL-2
