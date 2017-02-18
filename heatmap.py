@@ -20,6 +20,14 @@ class HeatmapError(Exception):
     pass
 
 
+def hexlify(rgbytes):
+    if isinstance(b'x'[0], int):
+        ords = [byte for byte in rgbytes]
+    else:
+        ords = [ord(byte) for byte in rgbytes]
+    return ('{:02x}' * len(ords)).format(*ords)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -258,8 +266,7 @@ class Grid(object):
         self._set_pixel(rgbytes)
         if self.verbose >= 3:
             print("        pixel y {} x{} linear {} rgb #{}".format(
-                self.y, self.x, self.linear,
-                ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
+                self.y, self.x, self.linear, hexlify(rgbytes)))
         self._pixel_mix = []
         self._pixel_dirty = False
 
@@ -297,8 +304,7 @@ class Grid(object):
                 self._set_pixel(rgbytes)
                 if self.verbose >= 3:
                     print("        pixel range linear {} to {} rgb #{}".format(
-                        self.linear, last_pixel - 1,
-                        ''.join('{:02x}'.format(ord(byte)) for byte in rgbytes)))
+                        self.linear, last_pixel - 1, hexlify(rgbytes)))
                 while self.linear < last_pixel - 1:
                     self._next_pixel()
                     self._set_pixel(rgbytes)
