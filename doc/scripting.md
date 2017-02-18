@@ -23,8 +23,8 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
 ```
 
  * `fs` is a btrfs.FileSystem object.
- * `devices` is a list of one or more device objects, or `None` to
-   automatically use all of them.
+ * `devices` is a list of one or more device objects (`btrfs.ctree.DevItem`),
+   or `None` to automatically use all of them.
  * `order` defines the hilbert curve order. Most of the time it's best to let
    it be determined automatically. A higher number will result in a more
    detailed picture, with less bytes per pixel.
@@ -45,7 +45,7 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
 ### 1.2 The virtual address space, chunk level picture
 
 ```python
-walk_chunks(fs, order=None, size=None, default_granularity=33554432,
+walk_chunks(fs, devices=None, order=None, size=None, default_granularity=33554432,
             verbose=0, min_brightness=None, curve=None)
 ```
 
@@ -162,7 +162,95 @@ dev_extent devid 2 paddr 1083179008 length 1073741824 pend 2156920831 type DATA|
 pngfile device_2.png
 ```
 
-### 2.4 Detailed picture of a full filesystem
+### 2.4 Show virtual address space, separate image per device
+
+This one is very similar to the previous example, but it shows the amount of used space
+on each device that is attached to the filesystem sorted on virtual address space.
+
+In addition, it lowers the resolution a bit from what would be chosen
+automatically (4 instead of 5), chooses a snake curve instead of hilbert and
+bumps the minimal brightness a bit, since the metadata part is almost
+completely empty.
+
+```python
+#!/usr/bin/python
+import btrfs
+import heatmap
+fs = btrfs.FileSystem('/mnt/btrfs')
+for device in fs.devices():
+    grid = heatmap.walk_chunks(fs, [device], order=4, size=8, curve='snake',
+                               verbose=2, min_brightness=0.3)
+    grid.write_png('stripes_on_device_%s.png' % device.devid)
+```
+
+output:
+```
+scope chunk stripes on devices 1
+grid curve snake order 4 size 8 height 16 width 16 total_bytes 5368709120 bytes_per_pixel 20971520.0
+block group vaddr 20971520 transid 23 length 8388608 flags SYSTEM|RAID1 used 16384 used_pct 0
+chunk vaddr 20971520 type SYSTEM|RAID1 length 8388608 num_stripes 2
+    stripe devid 1 offset 20971520
+    in_pixel 0 40.00%
+block group vaddr 29360128 transid 23 length 1073741824 flags METADATA|RAID1 used 7684096 used_pct 1
+chunk vaddr 29360128 type METADATA|RAID1 length 1073741824 num_stripes 2
+    stripe devid 1 offset 29360128
+    first_pixel 0 60.00% last_pixel 51 60.00%
+block group vaddr 3250585600 transid 23 length 1073741824 flags DATA used 1031831552 used_pct 96
+chunk vaddr 3250585600 type DATA length 1073741824 num_stripes 1
+    stripe devid 1 offset 1103101952
+    first_pixel 51 40.00% last_pixel 102 80.00%
+block group vaddr 5398069248 transid 23 length 1073741824 flags DATA used 1071894528 used_pct 100
+chunk vaddr 5398069248 type DATA length 1073741824 num_stripes 1
+    stripe devid 1 offset 2176843776
+    first_pixel 102 20.00% last_pixel 153 100.00%
+block group vaddr 7545552896 transid 23 length 1073741824 flags DATA used 934223872 used_pct 87
+chunk vaddr 7545552896 type DATA length 1073741824 num_stripes 1
+    stripe devid 1 offset 3250585600
+    first_pixel 154 100.00% last_pixel 205 20.00%
+block group vaddr 8619294720 transid 23 length 1044381696 flags DATA used 794705920 used_pct 76
+chunk vaddr 8619294720 type DATA length 1044381696 num_stripes 1
+    stripe devid 1 offset 4324327424
+    first_pixel 205 80.00% last_pixel 254 100.00%
+pngfile stripes_on_device_1.png
+
+scope chunk stripes on devices 2
+grid curve snake order 4 size 8 height 16 width 16 total_bytes 5368709120 bytes_per_pixel 20971520.0
+block group vaddr 20971520 transid 23 length 8388608 flags SYSTEM|RAID1 used 16384 used_pct 0
+chunk vaddr 20971520 type SYSTEM|RAID1 length 8388608 num_stripes 2
+    stripe devid 2 offset 1048576
+    in_pixel 0 40.00%
+block group vaddr 29360128 transid 23 length 1073741824 flags METADATA|RAID1 used 7684096 used_pct 1
+chunk vaddr 29360128 type METADATA|RAID1 length 1073741824 num_stripes 2
+    stripe devid 2 offset 9437184
+    first_pixel 0 60.00% last_pixel 51 60.00%
+block group vaddr 2176843776 transid 23 length 1073741824 flags DATA used 1030082560 used_pct 96
+chunk vaddr 2176843776 type DATA length 1073741824 num_stripes 1
+    stripe devid 2 offset 1620049920
+    first_pixel 51 40.00% last_pixel 102 80.00%
+block group vaddr 4324327424 transid 23 length 1073741824 flags DATA used 1040887808 used_pct 97
+chunk vaddr 4324327424 type DATA length 1073741824 num_stripes 1
+    stripe devid 2 offset 2693791744
+    first_pixel 102 20.00% last_pixel 153 100.00%
+block group vaddr 6471811072 transid 23 length 1073741824 flags DATA used 871952384 used_pct 81
+chunk vaddr 6471811072 type DATA length 1073741824 num_stripes 1
+    stripe devid 2 offset 3767533568
+    first_pixel 154 100.00% last_pixel 205 20.00%
+block group vaddr 9663676416 transid 23 length 536870912 flags DATA used 268435456 used_pct 50
+chunk vaddr 9663676416 type DATA length 536870912 num_stripes 1
+    stripe devid 2 offset 1083179008
+    first_pixel 205 80.00% last_pixel 230 80.00%
+block group vaddr 10200547328 transid 23 length 527433728 flags DATA used 98013184 used_pct 19
+chunk vaddr 10200547328 type DATA length 527433728 num_stripes 1
+    stripe devid 2 offset 4841275392
+    first_pixel 230 20.00% last_pixel 255 95.00%
+pngfile stripes_on_device_2.png
+```
+
+Stripes on device 1 | Stripes on device 2 
+:------------------:|:-------------------:
+|![Device 1](scripting/stripes_on_device_1.png) | ![Device 2](scripting/stripes_on_device_2.png)
+
+### 2.5 Detailed picture of a full filesystem
 
 ```python
 #!/usr/bin/python
