@@ -134,7 +134,9 @@ we can easily repeat it to get images which can be put together into a timelapse
 
 ### 2.3 Show usage, separate image per device, more verbose output
 
-The following script generates a separate picture per physical device:
+The following script generates a separate picture per physical device. Since this is
+a very small filesystem, we use mode linear to make it look a bit more like norton
+disk defragmenter.
 
 ```python
 #!/usr/bin/python
@@ -142,25 +144,36 @@ import btrfs
 import heatmap
 fs = btrfs.FileSystem('/mnt/raid0')
 for device in fs.devices():
-    heatmap.walk_dev_extents(fs, [device], verbose=1).write_png('device_%s.png' % device.devid)
+    grid = heatmap.walk_dev_extents(fs, [device], curve='linear', size=8, verbose=1)
+    grid.write_png('device_%s.png' % device.devid)
 ```
 
 output:
 ```
 scope device 1
-grid order 5 size 10 height 32 width 32 total_bytes 26843545600 bytes_per_pixel 26214400.0
-dev_extent devid 1 paddr 20971520 length 8388608 pend 29360127 type SYSTEM|RAID0 used_pct 0.10
-dev_extent devid 1 paddr 29360128 length 1073741824 pend 1103101951 type METADATA|RAID0 used_pct 6.57
-dev_extent devid 1 paddr 1103101952 length 1073741824 pend 2176843775 type DATA|RAID0 used_pct 50.51
+grid curve hilbert order 4 size 8 height 16 width 16 total_bytes 5368709120 bytes_per_pixel 20971520.0
+dev_extent devid 1 paddr 20971520 length 8388608 pend 29360127 type SYSTEM|RAID1 used_pct 0.20
+dev_extent devid 1 paddr 29360128 length 1073741824 pend 1103101951 type METADATA|RAID1 used_pct 0.50
+dev_extent devid 1 paddr 1103101952 length 1073741824 pend 2176843775 type DATA used_pct 96.10
+dev_extent devid 1 paddr 3250585600 length 1073741824 pend 4324327423 type DATA used_pct 87.01
+dev_extent devid 1 paddr 4324327424 length 1044381696 pend 5368709119 type DATA used_pct 76.09
 pngfile device_1.png
 
 scope device 2
-grid order 5 size 10 height 32 width 32 total_bytes 26843545600 bytes_per_pixel 26214400.0
-dev_extent devid 2 paddr 1048576 length 8388608 pend 9437183 type SYSTEM|RAID0 used_pct 0.10
-dev_extent devid 2 paddr 9437184 length 1073741824 pend 1083179007 type METADATA|RAID0 used_pct 6.57
-dev_extent devid 2 paddr 1083179008 length 1073741824 pend 2156920831 type DATA|RAID0 used_pct 50.51
+grid curve hilbert order 4 size 8 height 16 width 16 total_bytes 5368709120 bytes_per_pixel 20971520.0
+dev_extent devid 2 paddr 1048576 length 8388608 pend 9437183 type SYSTEM|RAID1 used_pct 0.20
+dev_extent devid 2 paddr 9437184 length 1073741824 pend 1083179007 type METADATA|RAID1 used_pct 0.50
+dev_extent devid 2 paddr 1083179008 length 536870912 pend 1620049919 type DATA used_pct 50.00
+dev_extent devid 2 paddr 1620049920 length 1073741824 pend 2693791743 type DATA used_pct 96.03
+dev_extent devid 2 paddr 2693791744 length 1073741824 pend 3767533567 type DATA used_pct 50.00
+dev_extent devid 2 paddr 3767533568 length 1073741824 pend 4841275391 type DATA used_pct 25.00
+dev_extent devid 2 paddr 4841275392 length 527433728 pend 5368709119 type DATA used_pct 18.58
 pngfile device_2.png
 ```
+
+Dev Extents on device 1 | Dev Extents on device 2
+:------------------:|:-------------------:
+|![Device 1](scripting/device_1.png) | ![Device 2](scripting/device_2.png)
 
 ### 2.4 Show virtual address space, separate image per device
 
