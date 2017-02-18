@@ -321,24 +321,39 @@ class Grid(object):
             _write_png(pngfile, self.width, self.height, self._grid)
 
 
-def walk_chunks(fs, order=None, size=None,
+def walk_chunks(fs, devices=None, order=None, size=None,
                 default_granularity=33554432, verbose=0, min_brightness=None, curve=None):
-    print("scope chunks")
-    total_bytes = sum(device.total_bytes for device in fs.devices())
+    if devices is None:
+        devices = list(fs.devices())
+        devids = None
+        print("scope chunks")
+    else:
+        if isinstance(devices, types.GeneratorType):
+            devices = list(devices)
+        devids = [device.devid for device in devices]
+        print("scope chunk stripes on devices {}".format(' '.join(map(str, devids))))
+
+    total_bytes = sum(device.total_bytes for device in devices)
 
     grid = Grid(order, size, total_bytes, default_granularity, verbose, min_brightness, curve)
     byte_offset = 0
     for chunk in fs.chunks():
+        if devids is None:
+            stripes = chunk.stripes
+        else:
+            stripes = [stripe for stripe in chunk.stripes if stripe.devid in devids]
+        if len(stripes) == 0:
+            continue
         try:
             block_group = fs.block_group(chunk.vaddr, chunk.length)
         except IndexError:
             continue
         used_pct = block_group.used / block_group.length
-        length = chunk.length * len(chunk.stripes)
+        length = chunk.length * len(stripes)
         if verbose >= 1:
             print(block_group)
             print(chunk)
-            for stripe in chunk.stripes:
+            for stripe in stripes:
                 print("    {}".format(stripe))
         grid.fill(byte_offset, length, used_pct,
                   dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK])
