@@ -37,7 +37,7 @@ the linux kernel for usage information and build a png picture reflecting that
 low level information.
 
 Because the needed information is retrieved using the btrfs kernel API, it has
-to be run as root. :| If you don't trust it, don't run it on your system.
+to be run as root. If you don't trust it, don't run it on your system.
 
 ## I have a picture now, with quite a long filename, why?
 
@@ -66,8 +66,9 @@ the search ioctl and concatenating all information into a single big image. The
 usage values are computed by looking up usage counters in the block group items
 from the extent tree.
 
-It's also possible to create pictures of the contents of block groups, on
-extent level. For more information, see links to additional documentation below.
+It's also possible to have the picture sorted by btrfs virtual address space
+instead, or to create pictures of the contents of block groups, on extent
+level. For more information, see links to additional documentation below.
 
 ## How do I create a timelapse movie out of this?
 
@@ -94,7 +95,10 @@ btrfs balance |
 
 ## More documentation and advanced usage
 
+* The built-in `--help` option will show all functionality that is available
+  through the command line.
 * Different ways to walk the pixel grid: [Hilbert, Snake, Linear](doc/curves.md).
+* Sorting the picture on [virtual instead of physical address space](doc/sort.md).
 * [Extent level pictures](doc/extent.md) show detailed usage of the virtual
   address space inside block groups.
 * By [scripting btrfs-heatmap](doc/scripting.md) it's possible to make pictures

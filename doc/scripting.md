@@ -42,7 +42,16 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
    distinguish them from unallocated space when usage is really low.
  * `curve` is either 'hilbert' (the default), 'snake', or 'linear'
 
-### 1.2 Working with block groups, extent level picture
+### 1.2 The virtual address space, chunk level picture
+
+```python
+walk_chunks(fs, order=None, size=None, default_granularity=33554432,
+            verbose=0, min_brightness=None, curve=None)
+```
+
+  * for all options, see above
+
+### 1.3 Working with block groups, extent level picture
 
 ```python
 walk_extents(fs, block_groups, order=None, size=None,
@@ -54,7 +63,7 @@ walk_extents(fs, block_groups, order=None, size=None,
    of the filesystem, which is often 4096 bytes.
  * for other options, see above
 
-### 1.3 A helper for generating file names
+### 1.4 A helper for generating file names
 
 ```python
 generate_png_file_name(output=None, parts=None)
