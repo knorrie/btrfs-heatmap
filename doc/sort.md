@@ -56,7 +56,7 @@ the physical addresses and the length of the allocated space maps to chunks
 that vary wildy all around the virtual address space.
 
 ```
--# python
+-# python3
 >>> import btrfs
 >>> fs = btrfs.FileSystem('/')
 >>> for dev_extent in fs.dev_extents():
@@ -91,7 +91,7 @@ virtual address space, there can be one or more stripes which point back to
 the device numbers and physical addressing of each `dev_extent`:
 
 ```
--# python
+-# python3
 >>> import btrfs
 >>> fs = btrfs.FileSystem('/')
 >>> for chunk in fs.chunks():

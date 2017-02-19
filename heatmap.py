@@ -1,6 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-from __future__ import division, print_function, absolute_import, unicode_literals
 import argparse
 import btrfs
 import os
@@ -10,22 +9,8 @@ import types
 import zlib
 
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
-
 class HeatmapError(Exception):
     pass
-
-
-def hexlify(rgbytes):
-    if isinstance(b'x'[0], int):
-        ords = [byte for byte in rgbytes]
-    else:
-        ords = [ord(byte) for byte in rgbytes]
-    return ('{:02x}' * len(ords)).format(*ords)
 
 
 def parse_args():
@@ -165,8 +150,8 @@ def hilbert(order):
 def linear(order):
     edge_len = 2 ** order
     l = 0
-    for y in xrange(0, edge_len):
-        for x in xrange(0, edge_len):
+    for y in range(0, edge_len):
+        for x in range(0, edge_len):
             yield (y, x, l)
             l += 1
 
@@ -174,7 +159,7 @@ def linear(order):
 def snake(order):
     edge_len = 2 ** order
     l = 0
-    for y in xrange(0, edge_len, 2):
+    for y in range(0, edge_len, 2):
         for x in range(0, edge_len):
             yield (y, x, l)
             l += 1
@@ -210,8 +195,8 @@ class Grid(object):
         self._color_cache = {}
         self._add_color_cache(black)
         self._grid = [[self._color_cache[black]
-                       for x in xrange(self.width)]
-                      for y in xrange(self.height)]
+                       for x in range(self.width)]
+                      for y in range(self.height)]
         self._finished = False
         if min_brightness is None:
             self._min_brightness = 0.1
@@ -265,8 +250,8 @@ class Grid(object):
         rgbytes = self._pixel_mix_to_rgbytes()
         self._set_pixel(rgbytes)
         if self.verbose >= 3:
-            print("        pixel y {} x{} linear {} rgb #{}".format(
-                self.y, self.x, self.linear, hexlify(rgbytes)))
+            print("        pixel y {} x{} linear {} rgb #{:02x}{:02x}{:02x}".format(
+                self.y, self.x, self.linear, *[byte for byte in rgbytes]))
         self._pixel_mix = []
         self._pixel_dirty = False
 
@@ -303,8 +288,8 @@ class Grid(object):
                 rgbytes = self._pixel_mix_to_rgbytes()
                 self._set_pixel(rgbytes)
                 if self.verbose >= 3:
-                    print("        pixel range linear {} to {} rgb #{}".format(
-                        self.linear, last_pixel - 1, hexlify(rgbytes)))
+                    print("        pixel range linear {} to {} rgb #{:02x}{:02x}{:02x}".format(
+                        self.linear, last_pixel - 1, *[byte for byte in rgbytes]))
                 while self.linear < last_pixel - 1:
                     self._next_pixel()
                     self._set_pixel(rgbytes)

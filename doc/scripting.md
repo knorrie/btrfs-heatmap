@@ -84,7 +84,7 @@ generate_png_file_name(output=None, parts=None)
 The following is the equivalent of doing `heatmap.py --size 8 -o full-fs.png /`:
 
 ```python
-#!/usr/bin/python
+#!/usr/bin/python3
 import btrfs
 import heatmap
 fs = btrfs.FileSystem('/')
@@ -105,7 +105,7 @@ pngfile full-fs.png
 ### 2.2 The four newest DATA block groups together
 
 ```python
-#!/usr/bin/python
+#!/usr/bin/python3
 import btrfs
 import heatmap
 fs = btrfs.FileSystem('/')
@@ -139,7 +139,7 @@ a very small filesystem, we use mode linear to make it look a bit more like nort
 disk defragmenter.
 
 ```python
-#!/usr/bin/python
+#!/usr/bin/python3
 import btrfs
 import heatmap
 fs = btrfs.FileSystem('/mnt/raid0')
@@ -186,7 +186,7 @@ bumps the minimal brightness a bit, since the metadata part is almost
 completely empty.
 
 ```python
-#!/usr/bin/python
+#!/usr/bin/python3
 import btrfs
 import heatmap
 fs = btrfs.FileSystem('/mnt/btrfs')
@@ -266,7 +266,7 @@ Stripes on device 1 | Stripes on device 2
 ### 2.5 Detailed picture of a full filesystem
 
 ```python
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import btrfs
 import heatmap
