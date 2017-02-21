@@ -22,11 +22,10 @@ Physical    | Virtual
 
 ## Virtual address space
 
-The virtual address space of a btrfs filesystem is a space in which gets
-extended every time a chunk of raw disk space gets allocated to be used for
-data or metadata. While unallocted physical space gets reused all the time,
-virtual address space is never reused and will only grow further into higher
-numbers.
+The virtual address space of a btrfs filesystem is a space which gets extended
+every time a chunk of raw disk space gets allocated to be used for data or
+metadata. While unallocted physical space gets reused all the time, virtual
+address space is never reused and will only grow further into higher numbers.
 
 When btrfs wants to allocate free physical space into new virtual address
 space, it will always choose the first free part of physical unallocated space
