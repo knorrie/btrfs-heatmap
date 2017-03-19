@@ -453,7 +453,7 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
             # actual extent objects.
             min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
             max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) - 1
-            for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
+            for header, _ in btrfs.ioctl.search_v2(fs.fd, tree, min_key, max_key, buf_size=65536):
                 if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
                     length = header.offset
                     first_byte = block_group_grid_offset[block_group] + header.objectid
