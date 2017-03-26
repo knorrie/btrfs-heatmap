@@ -11,4 +11,4 @@ Architecture: all
 Depends: python3, python3-btrfs
 Description: Visualize the layout of data on your btrfs filesystem
  The btrfs heatmap script creates a visualization of how a btrfs filesystem is
- utilizing the underlying disk space of the block devices that are added to it.
+ using the underlying disk space of the block devices that are added to it.
