@@ -1,6 +1,21 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+#
+# Copyright (C) 2016-2017 Hans van Kranenburg <hans@knorrie.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public
+# License v2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA 02110-1301 USA
 
-from __future__ import division, print_function, absolute_import, unicode_literals
 import argparse
 import btrfs
 import os
@@ -10,22 +25,8 @@ import types
 import zlib
 
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
-
 class HeatmapError(Exception):
     pass
-
-
-def hexlify(rgbytes):
-    if isinstance(b'x'[0], int):
-        ords = [byte for byte in rgbytes]
-    else:
-        ords = [ord(byte) for byte in rgbytes]
-    return ('{:02x}' * len(ords)).format(*ords)
 
 
 def parse_args():
@@ -165,8 +166,8 @@ def hilbert(order):
 def linear(order):
     edge_len = 2 ** order
     l = 0
-    for y in xrange(0, edge_len):
-        for x in xrange(0, edge_len):
+    for y in range(0, edge_len):
+        for x in range(0, edge_len):
             yield (y, x, l)
             l += 1
 
@@ -174,7 +175,7 @@ def linear(order):
 def snake(order):
     edge_len = 2 ** order
     l = 0
-    for y in xrange(0, edge_len, 2):
+    for y in range(0, edge_len, 2):
         for x in range(0, edge_len):
             yield (y, x, l)
             l += 1
@@ -210,8 +211,8 @@ class Grid(object):
         self._color_cache = {}
         self._add_color_cache(black)
         self._grid = [[self._color_cache[black]
-                       for x in xrange(self.width)]
-                      for y in xrange(self.height)]
+                       for x in range(self.width)]
+                      for y in range(self.height)]
         self._finished = False
         if min_brightness is None:
             self._min_brightness = 0.1
@@ -265,8 +266,8 @@ class Grid(object):
         rgbytes = self._pixel_mix_to_rgbytes()
         self._set_pixel(rgbytes)
         if self.verbose >= 3:
-            print("        pixel y {} x{} linear {} rgb #{}".format(
-                self.y, self.x, self.linear, hexlify(rgbytes)))
+            print("        pixel y {} x{} linear {} rgb #{:02x}{:02x}{:02x}".format(
+                self.y, self.x, self.linear, *[byte for byte in rgbytes]))
         self._pixel_mix = []
         self._pixel_dirty = False
 
@@ -303,8 +304,8 @@ class Grid(object):
                 rgbytes = self._pixel_mix_to_rgbytes()
                 self._set_pixel(rgbytes)
                 if self.verbose >= 3:
-                    print("        pixel range linear {} to {} rgb #{}".format(
-                        self.linear, last_pixel - 1, hexlify(rgbytes)))
+                    print("        pixel range linear {} to {} rgb #{:02x}{:02x}{:02x}".format(
+                        self.linear, last_pixel - 1, *[byte for byte in rgbytes]))
                 while self.linear < last_pixel - 1:
                     self._next_pixel()
                     self._set_pixel(rgbytes)
@@ -452,7 +453,7 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
             # actual extent objects.
             min_key = btrfs.ctree.Key(block_group.vaddr, 0, 0)
             max_key = btrfs.ctree.Key(block_group.vaddr + block_group.length, 0, 0) - 1
-            for header, _ in btrfs.ioctl.search(fs.fd, tree, min_key, max_key):
+            for header, _ in btrfs.ioctl.search_v2(fs.fd, tree, min_key, max_key, buf_size=65536):
                 if header.type == btrfs.ctree.EXTENT_ITEM_KEY:
                     length = header.offset
                     first_byte = block_group_grid_offset[block_group] + header.objectid

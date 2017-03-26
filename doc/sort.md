@@ -22,11 +22,10 @@ Physical    | Virtual
 
 ## Virtual address space
 
-The virtual address space of a btrfs filesystem is a space in which gets
-extended every time a chunk of raw disk space gets allocated to be used for
-data or metadata. While unallocted physical space gets reused all the time,
-virtual address space is never reused and will only grow further into higher
-numbers.
+The virtual address space of a btrfs filesystem is a space which gets extended
+every time a chunk of raw disk space gets allocated to be used for data or
+metadata. While unallocted physical space gets reused all the time, virtual
+address space is never reused and will only grow further into higher numbers.
 
 When btrfs wants to allocate free physical space into new virtual address
 space, it will always choose the first free part of physical unallocated space
@@ -56,7 +55,7 @@ the physical addresses and the length of the allocated space maps to chunks
 that vary wildy all around the virtual address space.
 
 ```
--# python
+-# python3
 >>> import btrfs
 >>> fs = btrfs.FileSystem('/')
 >>> for dev_extent in fs.dev_extents():
@@ -91,7 +90,7 @@ virtual address space, there can be one or more stripes which point back to
 the device numbers and physical addressing of each `dev_extent`:
 
 ```
--# python
+-# python3
 >>> import btrfs
 >>> fs = btrfs.FileSystem('/')
 >>> for chunk in fs.chunks():

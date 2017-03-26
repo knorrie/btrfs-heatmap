@@ -27,8 +27,7 @@ Here's a small program that uses python-btrfs to list of all block groups in a
 filesystem (from `examples/show_block_groups.py` in python-btrfs):
 
 ```python
-#!/usr/bin/python
-from __future__ import print_function
+#!/usr/bin/python3
 import btrfs
 import sys
 fs = btrfs.FileSystem(sys.argv[1])
