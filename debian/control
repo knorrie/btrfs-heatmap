@@ -1,5 +1,5 @@
 Source: btrfs-heatmap
-Section: python
+Section: utils
 Priority: optional
 Maintainer: Hans van Kranenburg <hans@knorrie.org>
 Build-Depends: debhelper (>= 9), dh-exec
