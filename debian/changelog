@@ -1,5 +1,5 @@
-btrfs-heatmap (5-1) unstable; urgency=medium
+btrfs-heatmap (6-1) unstable; urgency=medium
 
-  * Initial release.
+  * Initial release (Closes: #859239).
 
- -- Hans van Kranenburg <hans@knorrie.org>  Sat, 18 Feb 2017 23:56:31 +0100
+ -- Hans van Kranenburg <hans@knorrie.org>  Sat, 01 Apr 2017 01:02:07 +0200
