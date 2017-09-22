@@ -609,7 +609,7 @@ def main():
             try:
                 block_group = fs.block_group(bg_vaddr)
             except IndexError:
-                raise HeatmapError("Error: no block group at vaddr {}!".format(bg_vaddr))
+                raise HeatmapError("No block group at vaddr {}!".format(bg_vaddr))
             grid = walk_extents(fs, [block_group], order=args.order, size=args.size,
                                 verbose=verbose, curve=args.curve)
             filename_parts.extend(['blockgroup', block_group.vaddr])
