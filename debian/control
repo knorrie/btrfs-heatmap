@@ -3,7 +3,7 @@ Section: utils
 Priority: optional
 Maintainer: Hans van Kranenburg <hans@knorrie.org>
 Build-Depends: debhelper (>= 9), dh-exec
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Homepage: https://github.com/knorrie/btrfs-heatmap
 
 Package: btrfs-heatmap
