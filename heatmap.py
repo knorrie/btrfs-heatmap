@@ -589,8 +589,6 @@ def main():
         verbose -= args.quiet
 
     fs = btrfs.FileSystem(path)
-    fs_info = fs.fs_info()
-    print(fs_info)
     filename_parts = ['fsid', fs.fsid]
     if args.curve != 'hilbert':
         filename_parts.append(args.curve)
