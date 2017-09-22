@@ -617,6 +617,8 @@ def main():
         if e.errno == errno.EPERM:
             raise HeatmapError("Insufficient permissions to use the btrfs kernel API. "
                                "Hint: Try running the script as root user.".format(e))
+        elif e.errno == errno.ENOTTY:
+            raise HeatmapError("Unable to retrieve data. Hint: Not a btrfs file system?")
         raise
     try:
         filename = generate_png_file_name(args.output, filename_parts)
