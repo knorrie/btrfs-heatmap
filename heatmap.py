@@ -618,8 +618,11 @@ def main():
             raise HeatmapError("Insufficient permissions to use the btrfs kernel API. "
                                "Hint: Try running the script as root user.".format(e))
         raise
-
-    grid.write_png(generate_png_file_name(args.output, filename_parts))
+    try:
+        filename = generate_png_file_name(args.output, filename_parts)
+        grid.write_png(filename)
+    except Exception as e:
+        raise HeatmapError("Unable to write output file {}: {}".format(filename, e))
 
 
 if __name__ == '__main__':
