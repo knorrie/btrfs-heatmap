@@ -59,6 +59,12 @@ def parse_args():
         help="increase debug output verbosity (-v, -vv, -vvv, etc)",
     )
     parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        help="decrease debug output verbosity (-q, -qq, -qqq, etc)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         dest="output",
@@ -575,12 +581,16 @@ def _write_png(pngfile, width, height, rows, color_type=2):
 def main():
     args = parse_args()
     path = args.mountpoint
-    verbose = args.verbose if args.verbose is not None else 0
+
+    verbose = 0
+    if args.verbose is not None:
+        verbose += args.verbose
+    if args.quiet is not None:
+        verbose -= args.quiet
 
     fs = btrfs.FileSystem(path)
     fs_info = fs.fs_info()
     print(fs_info)
-
     filename_parts = ['fsid', fs.fsid]
     if args.curve != 'hilbert':
         filename_parts.append(args.curve)
