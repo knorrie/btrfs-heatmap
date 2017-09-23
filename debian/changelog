@@ -1,3 +1,10 @@
+btrfs-heatmap (7-1) unstable; urgency=medium
+
+  * New release v7
+  * debian/control: Update to standards 4.0.0
+
+ -- Hans van Kranenburg <hans@knorrie.org>  Sat, 23 Sep 2017 12:00:46 +0200
+
 btrfs-heatmap (6-1) unstable; urgency=medium
 
   * Initial release (Closes: #859239).
