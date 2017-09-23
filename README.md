@@ -2,7 +2,7 @@ Btrfs Heatmap
 =============
 
 The btrfs heatmap script creates a visualization of how a btrfs filesystem is
-utilizing the underlying disk space of the block devices that are added to it.
+using the underlying disk space of the block devices that are added to it.
 
 ## What does it look like?
 
@@ -109,5 +109,5 @@ btrfs balance |
 Let me know if this program was useful for you, or if you have brilliant ideas
 about how to improve it.
 
-You can reach me on IRC in #btrfs on Freenode (I'm Knorrie), or send me an
-email on hans@knorrie.org
+You can reach me on IRC in #btrfs on Freenode (I'm Knorrie), use the github
+issue system or send me an email on hans@knorrie.org

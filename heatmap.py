@@ -18,6 +18,7 @@
 
 import argparse
 import btrfs
+import errno
 import os
 import struct
 import sys
@@ -57,6 +58,12 @@ def parse_args():
         "--verbose",
         action="count",
         help="increase debug output verbosity (-v, -vv, -vvv, etc)",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        help="decrease debug output verbosity (-q, -qq, -qqq, etc)",
     )
     parser.add_argument(
         "-o",
@@ -220,10 +227,11 @@ class Grid(object):
             if min_brightness < 0 or min_brightness > 1:
                 raise ValueError("min_brightness out of range (need >= 0 and <= 1)")
             self._min_brightness = min_brightness
-        print("grid curve {} order {} size {} height {} width {} total_bytes {} "
-              "bytes_per_pixel {}".format(curve, self.order, self.size,
-                                          self.height, self.width, total_bytes,
-                                          self.bytes_per_pixel, self.num_steps))
+        if self.verbose >= 0:
+            print("grid curve {} order {} size {} height {} width {} total_bytes {} "
+                  "bytes_per_pixel {}".format(curve, self.order, self.size,
+                                              self.height, self.width, total_bytes,
+                                              self.bytes_per_pixel, self.num_steps))
 
     def _next_pixel(self):
         if self._pixel_dirty is True:
@@ -314,7 +322,8 @@ class Grid(object):
             self._add_to_pixel_mix(color, used_pct, pct_of_last_pixel)
 
     def write_png(self, pngfile):
-        print("pngfile {}".format(pngfile))
+        if self.verbose >= 0:
+            print("pngfile {}".format(pngfile))
         if self._finished is False:
             if self._pixel_dirty is True:
                 self._finish_pixel()
@@ -333,12 +342,14 @@ def walk_chunks(fs, devices=None, order=None, size=None,
     if devices is None:
         devices = list(fs.devices())
         devids = None
-        print("scope chunks")
+        if verbose >= 0:
+            print("scope chunks")
     else:
         if isinstance(devices, types.GeneratorType):
             devices = list(devices)
         devids = [device.devid for device in devices]
-        print("scope chunk stripes on devices {}".format(' '.join(map(str, devids))))
+        if verbose >= 0:
+            print("scope chunk stripes on devices {}".format(' '.join(map(str, devids))))
 
     total_bytes = sum(device.total_bytes for device in devices)
 
@@ -380,7 +391,8 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
                        for device in devices
                        for dev_extent in fs.dev_extents(device.devid, device.devid))
 
-    print("scope device {}".format(' '.join([str(device.devid) for device in devices])))
+    if verbose >= 0:
+        print("scope device {}".format(' '.join([str(device.devid) for device in devices])))
     total_bytes = 0
     device_grid_offset = {}
     for device in devices:
@@ -433,7 +445,8 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
     if default_granularity is None:
         default_granularity = fs_info.sectorsize
 
-    print("scope block_group {}".format(' '.join([str(b.vaddr) for b in block_groups])))
+    if verbose >= 0:
+        print("scope block_group {}".format(' '.join([str(b.vaddr) for b in block_groups])))
     total_bytes = 0
     block_group_grid_offset = {}
     for block_group in block_groups:
@@ -569,36 +582,49 @@ def _write_png(pngfile, width, height, rows, color_type=2):
 def main():
     args = parse_args()
     path = args.mountpoint
-    verbose = args.verbose if args.verbose is not None else 0
 
-    fs = btrfs.FileSystem(path)
-    fs_info = fs.fs_info()
-    print(fs_info)
+    verbose = 0
+    if args.verbose is not None:
+        verbose += args.verbose
+    if args.quiet is not None:
+        verbose -= args.quiet
 
-    filename_parts = ['fsid', fs.fsid]
-    if args.curve != 'hilbert':
-        filename_parts.append(args.curve)
-    bg_vaddr = args.blockgroup
-    if bg_vaddr is None:
-        if args.sort == 'physical':
-            grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
-                                    curve=args.curve)
-        elif args.sort == 'virtual':
-            filename_parts.append('chunks')
-            grid = walk_chunks(fs, order=args.order, size=args.size, verbose=verbose,
-                               curve=args.curve)
+    try:
+        fs = btrfs.FileSystem(path)
+        filename_parts = ['fsid', fs.fsid]
+        if args.curve != 'hilbert':
+            filename_parts.append(args.curve)
+        bg_vaddr = args.blockgroup
+        if bg_vaddr is None:
+            if args.sort == 'physical':
+                grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
+                                        curve=args.curve)
+            elif args.sort == 'virtual':
+                filename_parts.append('chunks')
+                grid = walk_chunks(fs, order=args.order, size=args.size, verbose=verbose,
+                                   curve=args.curve)
+            else:
+                raise HeatmapError("Invalid sort option {}".format(args.sort))
         else:
-            raise HeatmapError("Invalid sort option {}".format(args.sort))
-    else:
-        try:
-            block_group = fs.block_group(bg_vaddr)
-        except IndexError:
-            raise HeatmapError("Error: no block group at vaddr {}!".format(bg_vaddr))
-        grid = walk_extents(fs, [block_group], order=args.order, size=args.size, verbose=verbose,
-                            curve=args.curve)
-        filename_parts.extend(['blockgroup', block_group.vaddr])
-
-    grid.write_png(generate_png_file_name(args.output, filename_parts))
+            try:
+                block_group = fs.block_group(bg_vaddr)
+            except IndexError:
+                raise HeatmapError("No block group at vaddr {}!".format(bg_vaddr))
+            grid = walk_extents(fs, [block_group], order=args.order, size=args.size,
+                                verbose=verbose, curve=args.curve)
+            filename_parts.extend(['blockgroup', block_group.vaddr])
+    except OSError as e:
+        if e.errno == errno.EPERM:
+            raise HeatmapError("Insufficient permissions to use the btrfs kernel API. "
+                               "Hint: Try running the script as root user.".format(e))
+        elif e.errno == errno.ENOTTY:
+            raise HeatmapError("Unable to retrieve data. Hint: Not a btrfs file system?")
+        raise
+    try:
+        filename = generate_png_file_name(args.output, filename_parts)
+        grid.write_png(filename)
+    except Exception as e:
+        raise HeatmapError("Unable to write output file {}: {}".format(filename, e))
 
 
 if __name__ == '__main__':
