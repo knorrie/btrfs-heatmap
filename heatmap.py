@@ -367,10 +367,12 @@ def walk_chunks(fs, devices=None, order=None, size=None,
         except btrfs.ctree.ItemNotFoundError:
             continue
         used_pct = block_group.used / block_group.length
-        length = chunk.length * len(stripes)
+        length = btrfs.volumes.chunk_to_dev_extent_length(chunk) * len(stripes)
         if verbose >= 1:
             print(block_group)
             print(chunk)
+            print("allocated physical space for chunk at {}: {}".format(
+                chunk.vaddr, btrfs.utils.pretty_size(length)))
             for stripe in stripes:
                 print("    {}".format(stripe))
         grid.fill(byte_offset, length, used_pct,
