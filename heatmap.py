@@ -364,7 +364,7 @@ def walk_chunks(fs, devices=None, order=None, size=None,
             continue
         try:
             block_group = fs.block_group(chunk.vaddr, chunk.length)
-        except IndexError:
+        except btrfs.ctree.ItemNotFoundError:
             continue
         used_pct = block_group.used / block_group.length
         length = chunk.length * len(stripes)
