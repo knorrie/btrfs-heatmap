@@ -373,6 +373,7 @@ def walk_chunks(fs, devices=None, order=None, size=None,
             print(chunk)
             print("allocated physical space for chunk at {}: {}".format(
                 chunk.vaddr, btrfs.utils.pretty_size(length)))
+        if verbose >= 2:
             for stripe in stripes:
                 print("    {}".format(stripe))
         grid.fill(byte_offset, length, used_pct,
