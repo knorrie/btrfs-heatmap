@@ -1,0 +1,5 @@
+btrfs-heatmap v8, Jan 19, 2019
+  * This program now needs at least python-btrfs v10
+  * Make sorting on virtual address actually produce correct output
+    for RAID0, RAID10, RAID5 and RAID6.
+  * Change license to MIT (Expat)
