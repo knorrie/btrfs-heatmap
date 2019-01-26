@@ -598,29 +598,29 @@ def main():
         verbose -= args.quiet
 
     try:
-        fs = btrfs.FileSystem(path)
-        filename_parts = ['fsid', fs.fsid]
-        if args.curve != 'hilbert':
-            filename_parts.append(args.curve)
-        bg_vaddr = args.blockgroup
-        if bg_vaddr is None:
-            if args.sort == 'physical':
-                grid = walk_dev_extents(fs, order=args.order, size=args.size, verbose=verbose,
-                                        curve=args.curve)
-            elif args.sort == 'virtual':
-                filename_parts.append('chunks')
-                grid = walk_chunks(fs, order=args.order, size=args.size, verbose=verbose,
-                                   curve=args.curve)
+        with btrfs.FileSystem(path) as fs:
+            filename_parts = ['fsid', fs.fsid]
+            if args.curve != 'hilbert':
+                filename_parts.append(args.curve)
+            bg_vaddr = args.blockgroup
+            if bg_vaddr is None:
+                if args.sort == 'physical':
+                    grid = walk_dev_extents(fs, order=args.order, size=args.size,
+                                            verbose=verbose, curve=args.curve)
+                elif args.sort == 'virtual':
+                    filename_parts.append('chunks')
+                    grid = walk_chunks(fs, order=args.order, size=args.size,
+                                       verbose=verbose, curve=args.curve)
+                else:
+                    raise HeatmapError("Invalid sort option {}".format(args.sort))
             else:
-                raise HeatmapError("Invalid sort option {}".format(args.sort))
-        else:
-            try:
-                block_group = fs.block_group(bg_vaddr)
-            except IndexError:
-                raise HeatmapError("No block group at vaddr {}!".format(bg_vaddr))
-            grid = walk_extents(fs, [block_group], order=args.order, size=args.size,
-                                verbose=verbose, curve=args.curve)
-            filename_parts.extend(['blockgroup', block_group.vaddr])
+                try:
+                    block_group = fs.block_group(bg_vaddr)
+                except IndexError:
+                    raise HeatmapError("No block group at vaddr {}!".format(bg_vaddr))
+                grid = walk_extents(fs, [block_group], order=args.order, size=args.size,
+                                    verbose=verbose, curve=args.curve)
+                filename_parts.extend(['blockgroup', block_group.vaddr])
     except OSError as e:
         if e.errno == errno.EPERM:
             raise HeatmapError("Insufficient permissions to use the btrfs kernel API. "
