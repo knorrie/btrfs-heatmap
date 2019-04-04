@@ -551,9 +551,31 @@ def generate_png_file_name(output=None, parts=None):
     return os.path.join(output_dir, output_file)
 
 
+class StdoutWriter:
+    def __init__(self):
+        self.pos = 0
+        self.bytelist = []
+
+    def write(self, data):
+        self.bytelist[self.pos:self.pos+len(data)] = data
+        self.pos += len(data)
+
+    def tell(self):
+        return self.pos
+
+    def seek(self, pos):
+        self.pos = pos
+
+    def close(self):
+        sys.stdout.buffer.write(bytes(self.bytelist))
+
+
 def _write_png(pngfile, width, height, rows, color_type=2):
     struct_len = struct_crc = struct.Struct('!I')
-    out = open(pngfile, 'wb')
+    if pngfile == '-':
+        out = StdoutWriter()
+    else:
+        out = open(pngfile, 'wb')
     out.write(b'\x89PNG\r\n\x1a\n')
     # IHDR
     out.write(struct_len.pack(13))
@@ -596,6 +618,8 @@ def main():
         verbose += args.verbose
     if args.quiet is not None:
         verbose -= args.quiet
+    if args.output == '-':
+        verbose = -1
 
     try:
         with btrfs.FileSystem(path) as fs:

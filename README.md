@@ -47,6 +47,18 @@ up as input for creating a timelapse video.
 
 Creating multiple ones is as easy as doing `watch './heatmap.py /mountpoint'`
 
+## Can I directly view the resulting image?
+
+Yes! For this, output to stdout can be used. When using a dash as output
+filename (`-o -`), the resulting png data is written to stdout directly, which
+can be connected to an image viewer like `catimg` for displaying the image
+right away in a terminal screen using ansi color codes. For a pop up window, a
+program like `feh` can be used.
+
+A typical use case for using this functionality and `catimg` is to conveniently
+view results on a remote server without having to copy resulting png files
+around.
+
 ## Where's what? In what corner is the first or last byte located?
 
 By default, the ordering inside the picture is based on a [Hilbert
