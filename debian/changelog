@@ -1,8 +1,11 @@
-btrfs-heatmap (7-1~bpo9+1) stretch-backports; urgency=medium
+btrfs-heatmap (8-1) unstable; urgency=medium
 
-  * Rebuild for stretch-backports
+  * New release v8
+  * debian/copyright: change to Expat
+  * debian/control: depend on python-btrfs (>= 10-1~)
+  * debian/control: bump Standards-Version to 4.3.0
 
- -- Hans van Kranenburg <hans@knorrie.org>  Sat, 23 Sep 2017 12:10:13 +0200
+ -- Hans van Kranenburg <hans@knorrie.org>  Fri, 25 Jan 2019 23:26:48 +0100
 
 btrfs-heatmap (7-1) unstable; urgency=medium
 
