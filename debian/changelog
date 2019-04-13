@@ -1,3 +1,9 @@
+btrfs-heatmap (8-1~bpo9+1) stretch-backports; urgency=medium
+
+  * Rebuild for stretch-backports.
+
+ -- Hans van Kranenburg <hans@knorrie.org>  Sat, 13 Apr 2019 13:32:24 +0200
+
 btrfs-heatmap (8-1) unstable; urgency=medium
 
   * New release v8
