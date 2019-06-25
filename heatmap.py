@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
 #
 # Copyright (C) 2016 Hans van Kranenburg <hans@knorrie.org>
 #
@@ -21,14 +22,17 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# Std. lib imports
 import argparse
-import btrfs
 import errno
 import os
 import struct
 import sys
 import types
 import zlib
+
+# PyPI imports
+import btrfs
 
 
 class HeatmapError(Exception):
