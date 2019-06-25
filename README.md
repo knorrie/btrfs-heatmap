@@ -26,10 +26,9 @@ To run the program, you need to clone two git repositories:
 The fastest way to get it running is:
 ```
 -$ git clone https://github.com/knorrie/btrfs-heatmap.git
--$ git clone https://github.com/knorrie/python-btrfs.git
 -$ cd btrfs-heatmap
-btrfs-heatmap (master) -$ ln -s ../python-btrfs/btrfs/
-btrfs-heatmap (master) -$ sudo ./heatmap.py /mountpoint
+btrfs-heatmap (master) -$ pipenv install
+btrfs-heatmap (master) -$ sudo $(which pipenv) run ./heatmap.py /mountpoint
 ```
 
 When pointing heatmap.py to a mounted btrfs filesystem location, it will ask
