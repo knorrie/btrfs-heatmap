@@ -381,8 +381,11 @@ def walk_chunks(fs, devices=None, order=None, size=None,
         if verbose >= 2:
             for stripe in stripes:
                 print("    {}".format(stripe))
-        grid.fill(byte_offset, length, used_pct,
-                  dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK])
+        if block_group.flags in dev_extent_colors:
+            color = dev_extent_colors[block_group.flags]
+        else:
+            color = dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK]
+        grid.fill(byte_offset, length, used_pct, color)
         byte_offset += length
     return grid
 
@@ -427,8 +430,11 @@ def walk_dev_extents(fs, devices=None, order=None, size=None,
                                             btrfs.utils.block_group_flags_str(block_group.flags),
                                             used_pct * 100))
         first_byte = device_grid_offset[dev_extent.devid] + dev_extent.paddr
-        grid.fill(first_byte, dev_extent.length, used_pct,
-                  dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK])
+        if block_group.flags in dev_extent_colors:
+            color = dev_extent_colors[block_group.flags]
+        else:
+            color = dev_extent_colors[block_group.flags & btrfs.BLOCK_GROUP_TYPE_MASK]
+        grid.fill(first_byte, dev_extent.length, used_pct, color)
     return grid
 
 
