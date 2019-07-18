@@ -12,32 +12,24 @@ using the underlying disk space of the block devices that are added to it.
 
 
 This picture shows the 238GiB filesystem in my computer at work. It was
-generated using the command `./heatmap.py --size 9 /`, resulting in a 512x512
+generated using the command `btrfs-heatmap --size 9 /`, resulting in a 512x512
 pixel png. The black parts are unallocated disk space. Raw disk space that is
 allocated to be used for data (white), metadata (blue) or system (red) gets
 brighter if the fill factor of block groups is higher.
 
 ## How do I create a picture like this of my own computer?
 
-To run the program, you need to clone two git repositories:
-* [btrfs-heatmap (this project)](https://github.com/knorrie/btrfs-heatmap.git)
-* [python-btrfs (used to retrieve usage from btrfs)](https://github.com/knorrie/python-btrfs.git)
+Well, first install the program. It's probably available as package
+'btrfs-heatmap' in your favourite Linux distro.
 
-The fastest way to get it running is:
-```
--$ git clone https://github.com/knorrie/btrfs-heatmap.git
--$ git clone https://github.com/knorrie/python-btrfs.git
--$ cd btrfs-heatmap
-btrfs-heatmap (master) -$ ln -s ../python-btrfs/btrfs/
-btrfs-heatmap (master) -$ sudo ./heatmap.py /mountpoint
-```
-
-When pointing heatmap.py to a mounted btrfs filesystem location, it will ask
+When pointing btrfs-heatmap to a mounted btrfs filesystem location, it will ask
 the linux kernel for usage information and build a png picture reflecting that
-low level information.
+low level information.  Because the needed information is retrieved using the
+btrfs kernel API, it has to be run as root user:
 
-Because the needed information is retrieved using the btrfs kernel API, it has
-to be run as root. If you don't trust it, don't run it on your system.
+```
+-$ sudo btrfs-heatmap /mountpoint
+```
 
 ## I have a picture now, with quite a long filename, why?
 
@@ -45,7 +37,7 @@ The filename of the png picture is a combination of the filesystem ID and a
 timestamp by default, so that if you create multiple of them, they nicely pile
 up as input for creating a timelapse video.
 
-Creating multiple ones is as easy as doing `watch './heatmap.py /mountpoint'`
+Creating multiple ones is as easy as doing `watch 'btrfs-heatmap /mountpoint'`
 
 ## Can I directly view the resulting image?
 

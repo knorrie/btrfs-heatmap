@@ -20,7 +20,7 @@ Metadata tree blocks get colored depending on the tree they belong to:
 ![DEV](extent/DEV_TREE.png) | DEV (4) | ![FREE SPACE](extent/FREE_SPACE_TREE.png) | FREE SPACE (10) |
 ![FS](extent/FS_TREE.png) | FS (5, 256+) | ![DATA RELOC](extent/DATA_RELOC_TREE.png) | DATA RELOC (-9) |
 
-The `heatmap.py` program can take a `--blockgroup` argument, which needs a
+The `btrfs-heatmap` program can take a `--blockgroup` argument, which needs a
 vaddr of a block group as argument.
 
 Here's a small program that uses python-btrfs to list of all block groups in a
@@ -46,13 +46,13 @@ block group vaddr 783391129600 transid 1851697 length 1073741824 flags DATA used
 Then I created the images using the following commands:
 
 ```
--# ./heatmap.py --blockgroup 722187845632 --size 8 /
+-# btrfs-heatmap --blockgroup 722187845632 --size 8 /
 max_id 1 num_devices 1 fsid 64ac42f5-4ff7-4be0-b94a-90def45e6c1e nodesize 16384 sectorsize 4096 clone_alignment 4096
 scope block_group 722187845632
 grid order 8 size 8 height 256 width 256 total_bytes 536870912 bytes_per_pixel 8192.0
 pngfile fsid_64ac42f5-4ff7-4be0-b94a-90def45e6c1e_blockgroup_722187845632_at_1484322493.png
 
--# ./heatmap.py --blockgroup 783391129600 --size 8 /
+-# btrfs-heatmap --blockgroup 783391129600 --size 8 /
 max_id 1 num_devices 1 fsid 64ac42f5-4ff7-4be0-b94a-90def45e6c1e nodesize 16384 sectorsize 4096 clone_alignment 4096
 scope block_group 783391129600
 grid order 8 size 8 height 256 width 256 total_bytes 1073741824 bytes_per_pixel 16384.0

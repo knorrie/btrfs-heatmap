@@ -25,7 +25,7 @@ Hilbert | Snake | Linear |
 Here's an example of a filesystem level picture generated with all three. If
 you want to have pictures generated with a `linear` or `snake` way of walking
 the pixel grid, then you can specify the option `--curve linear` or `--curve
-snake` to the heatmap program.
+snake` to the btrfs-heatmap program.
 
 Hilbert | Snake | Linear |
 :------:|:------:|:------:
