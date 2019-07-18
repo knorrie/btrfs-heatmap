@@ -70,8 +70,11 @@ Space filling curve type or alternative. Default is hilbert.
 Increase debug output verbosity. May be specified multiple times to increase
 verbosity. (\fB\-v\fR, \fB\-vv\fR, \fB\-vvv\fR, etc...)
 .TP
-.BR \-o ", " "\-\-output " { \fIfilename | \fIdirectory }
-Output png file name or directory (default: filename automatically chosen)
+.BR \-o ", " "\-\-output " { \fIfilename | \fIdirectory | \fI- }
+Output png file name or directory (default: filename automatically chosen).
+When using the special value '-' as file, the png data will be written to the
+standard output instead of to a file on disk, so it can be directly viewed by
+an image viewer, e.g. with catimg.
 
 .SH "SEE ALSO"
 Source and documentation on github: https://github.com/knorrie/btrfs-heatmap
