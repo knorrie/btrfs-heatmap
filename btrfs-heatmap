@@ -497,13 +497,13 @@ def walk_extents(fs, block_groups, order=None, size=None, default_granularity=No
                     if extent.flags & btrfs.ctree.EXTENT_FLAG_DATA:
                         color = white
                     elif extent.flags & btrfs.ctree.EXTENT_FLAG_TREE_BLOCK:
-                        color = metadata_extent_colors[_get_metadata_root(extent)]
+                        color = metadata_extent_colors.get(_get_metadata_root(extent), white)
                     else:
                         raise Exception("BUG: expected either DATA or TREE_BLOCK flag, but got "
                                         "{}".format(btrfs.utils.extent_flags_str(extent.flags)))
                 elif isinstance(extent, btrfs.ctree.MetaDataItem):
                     length = nodesize
-                    color = metadata_extent_colors[_get_metadata_root(extent)]
+                    color = metadata_extent_colors.get(_get_metadata_root(extent), white)
                 first_byte = block_group_grid_offset[block_group] + extent.vaddr
                 if verbose >= 1:
                     print("extent vaddr {0} first_byte {1} type {2} length {3}".format(
