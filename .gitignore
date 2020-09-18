@@ -1,3 +1,2 @@
-*.png
-!doc/**
-btrfs
+/*.png
+/btrfs
