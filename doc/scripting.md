@@ -5,14 +5,22 @@ When doing something more sophisticated than just creating a picture of a
 complete filesystem or a single block group, it's better to do it from python
 and use the btrfs library to find the objects that we want to display.
 
-The heatmap code is not a full-blown library, but that doesn't prevent us from
-importing the heatmap.py from another script in the same directory and then
-using functions from it.
+The btrfs-heatmap code is not a full-blown library, but that doesn't prevent us
+from importing the code from another script in the same directory and then
+using functions from it. In order to be able to do this, I recommend just
+making a symlink to the btrfs-heatmap program in the location where you're
+writing the new script. This is a bit clumsy, but it's what it is, for now.
 
-First, we'll have a look at some interesting fuctions inside `heatmap.py`,
+```
+-$ ln -s $(which btrfs-heatmap) heatmap.py
+```
+
+After doing this, we can simply `import heatmap` in our new script.
+
+First, we'll have a look at some interesting fuctions inside the code,
 after which I'll show some examples of how to use them.
 
-## 1. Internal heatmap.py functions
+## 1. Internal btrfs-heatmap functions
 
 ### 1.1 Working with devices, dev extent level picture
 
@@ -36,7 +44,7 @@ walk_dev_extents(fs, devices=None, order=None, size=None,
    (approximately) on a single pixel in the output to determine the hilbert
    curve order to use. By default, this is 32MiB.
  * A higher number for `verbose` makes the output more verbose (like `-vvv` on
-   the command line of `heatmap.py` would be `verbose=3`).
+   the command line of `btrfs-heatmap` would be `verbose=3`).
  * `min_brightness` (0 <= `min_brightness` <= 1, default 0.1) sets the minimal
    brightness of pixels that are part of allocated space, to be able to
    distinguish them from unallocated space when usage is really low.
@@ -81,7 +89,8 @@ generate_png_file_name(output=None, parts=None)
 
 ### 2.1 Full filesystem image
 
-The following is the equivalent of doing `heatmap.py --size 8 -o full-fs.png /`:
+The following is the equivalent of doing `btrfs-heatmap --size 8 -o full-fs.png
+/`:
 
 ```python
 #!/usr/bin/python3

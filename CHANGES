@@ -1,3 +1,23 @@
+btrfs-heatmap v9, Oct 14, 2020
+  * Support image output to stdout! This is an awesome feature, because
+    we can pipe the output into a tool like catimg to show pictures in a
+    text based terminal instead of having to copy png files around!
+  * Rename heatmap.py to btrfs-heatmap. It should be shipped like that
+    in the distro packaging, and it makes documentation etc. more
+    straightforward.
+  * Move the manual page from the debian branch into the normal source
+    tree.
+  * Allow setting colors for specific bg flags. In order to use this
+    feature, it's still necessary to edit the dev_extent_colors
+    dictionary in the program code. There's no command line option or
+    anything. But, at least it can be done.
+  * Fixes:
+    - Actually use the python-btrfs FileSystem object context manager.
+    - Default to white color for unknown tree number. This prevents the
+      program from crashing when a yet unknown metadata tree number is
+      encountered.
+  * Various small documentation and bug fixes.
+
 btrfs-heatmap v8, Jan 19, 2019
   * This program now needs at least python-btrfs v10
   * Make sorting on virtual address actually produce correct output
