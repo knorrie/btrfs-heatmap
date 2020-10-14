@@ -2,7 +2,7 @@ Source: btrfs-heatmap
 Section: utils
 Priority: optional
 Maintainer: Hans van Kranenburg <hans@knorrie.org>
-Build-Depends: debhelper (>= 9), dh-exec
+Build-Depends: debhelper (>= 9)
 Standards-Version: 4.3.0
 Homepage: https://github.com/knorrie/btrfs-heatmap
 
