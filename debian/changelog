@@ -1,3 +1,21 @@
+btrfs-heatmap (9-1) unstable; urgency=medium
+
+  * New release v9
+  * debian/control: depend on python3:any instead of python3 because the
+    package is Architecture=all. Technically the dependency is not even
+    needed, because python3-btrfs depends on it already, but lintian is not
+    smart enough to find this out. (Closes: #968501)
+  * d/control, d/b-h.install: follow renames of heatmap.py to btrfs-heatmap in
+    the source tree.
+  * Install btrfs-heatmap in /usr/bin, not in /usr/sbin.
+  * d/b-h.manpages: follow man page renames. The man page is now in the
+    source outside the debian branch.
+  * d/b-h.install: install in /usr/bin instead of /usr/sbin
+  * d/control: fix debhelper compatibility version, bump to 12
+  * debian/control: recommend catimg
+
+ -- Hans van Kranenburg <hans@knorrie.org>  Wed, 14 Oct 2020 21:31:19 +0200
+
 btrfs-heatmap (8-1) unstable; urgency=medium
 
   * New release v8
