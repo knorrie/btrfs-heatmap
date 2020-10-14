@@ -23,24 +23,16 @@ Metadata tree blocks get colored depending on the tree they belong to:
 The `btrfs-heatmap` program can take a `--blockgroup` argument, which needs a
 vaddr of a block group as argument.
 
-Here's a small program that uses python-btrfs to list of all block groups in a
-filesystem (from `examples/show_block_groups.py` in python-btrfs):
-
-```python
-#!/usr/bin/python3
-import btrfs
-import sys
-fs = btrfs.FileSystem(sys.argv[1])
-for chunk in fs.chunks():
-    print(fs.block_group(chunk.vaddr, chunk.length))
-```
-
-Example part of the output:
+In order to list all block groups, we can use the `btrfs-search-metadata`
+program that is included with python-btrfs since v12. Example part of the
+output:
 
 ```
--# ./show_block_groups.py /
+-# btrfs-search-metadata block_groups /
+[...]
 block group vaddr 722187845632 transid 1871184 length 536870912 flags METADATA|DUP used 409714688 used_pct 76
 block group vaddr 783391129600 transid 1851697 length 1073741824 flags DATA used 573911040 used_pct 53
+[...]
 ```
 
 Then I created the images using the following commands:
